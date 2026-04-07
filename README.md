@@ -49,7 +49,7 @@
 
 ---
 
-## 📂 폴더 구조 (Project Structure)
+## 📂 폴더 구조 (Project Structure) / 예상
 프로젝트의 확장성을 고려한 현재 디렉토리 구조입니다.
 ```text
 src/
