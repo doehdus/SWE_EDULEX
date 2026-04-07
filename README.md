@@ -66,6 +66,9 @@ src/
  ├── services/            # aiService 등 외부 API 호출 로직
  ├── lib/                 # supabase 설정 및 유틸리티 함수
  └── types/               # TypeScript 인터페이스 및 타입 정의
+.
+.
+.
 
 ⚙️ 시작 가이드 (Getting Started)
 # 1. 저장소 복제
