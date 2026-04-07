@@ -10,8 +10,19 @@
 * **Language**: `TypeScript`
 * **Styling**: `Tailwind CSS`, `React`
 * **Database & Auth**: `Supabase`
-* **AI Service**: `OpenAI API`
+* **AI Service**: `OpenAI API`, `Gemini` 
 * **Data Fetching**: `React Query`
+
+## 🛠 Tools & Environment
+
+### Development & Design
+![VS Code](https://img.shields.io/badge/Visual_Studio_Code-007ACC?style=for-the-badge&logo=visual-studio-code&logoColor=white)
+![Figma](https://img.shields.io/badge/Figma-F24E1E?style=for-the-badge&logo=figma&logoColor=white)
+
+### Collaboration & Management
+![GitHub](https://img.shields.io/badge/GitHub_Projects-181717?style=for-the-badge&logo=github&logoColor=white)
+![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
+![Notion](https://img.shields.io/badge/Notion-000000?style=for-the-badge&logo=notion&logoColor=white)
 
 ---
 
@@ -28,13 +39,13 @@
 
 | 타입 | 설명 | 예시 |
 | :--- | :--- | :--- |
-| **Feat** | 새로운 기능 추가 | `Feat: AI 단어 추출 API 연결 (홍길동)` |
-| **Fix** | 버그 수정 | `Fix: Navbar 경로 에러 수정 (이몽룡)` |
-| **Design** | UI 디자인 및 CSS 변경 | `Design: 메인 페이지 Hero 섹션 수정 (성춘향)` |
-| **Refactor** | 코드 리팩토링 | `Refactor: useWords 훅 로직 개선 (홍길동)` |
-| **Comment** | 주석 추가 및 변경 | `Comment: AI 서비스 함수 주석 추가 (이몽룡)` |
-| **Rename** | 파일/폴더명 및 경로 변경 | `Rename: navbar.tsx 소문자로 변경 (성춘향)` |
-| **Remove** | 파일 삭제 | `Remove: 사용하지 않는 이미지 자원 삭제 (홍길동)` |
+| **Feat** | 새로운 기능 추가 | `Feat: AI 단어 추출 API 연결 (김도연)` |
+| **Fix** | 버그 수정 | `Fix: Navbar 경로 에러 수정 (김광현)` |
+| **Design** | UI 디자인 및 CSS 변경 | `Design: 메인 페이지 Hero 섹션 수정 (조민정)` |
+| **Refactor** | 코드 리팩토링 | `Refactor: useWords 훅 로직 개선 (차지원)` |
+| **Comment** | 주석 추가 및 변경 | `Comment: AI 서비스 함수 주석 추가 (황희)` |
+| **Rename** | 파일/폴더명 및 경로 변경 | `Rename: navbar.tsx 소문자로 변경 (김도연)` |
+| **Remove** | 파일 삭제 | `Remove: 사용하지 않는 이미지 자원 삭제 (김광현)` |
 
 ---
 
