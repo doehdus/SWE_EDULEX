@@ -87,7 +87,7 @@ OPENAI_API_KEY=your_openai_key
 npm run dev
 
 
-
+```mermaid
 erDiagram
     CUSTOMER {
         string name
