@@ -48,6 +48,107 @@
 | **Remove** | 파일 삭제 | `Remove: 사용하지 않는 이미지 자원 삭제 (김광현)` |
 
 ---
+### **GitHub README용 Mermaid 코드** (` ```mermaid ` 블록으로 감싸서 사용):
+
+```mermaid
+erDiagram
+  USERS {
+    int id PK
+    string username
+    string email
+    string password_hash
+    string role
+    timestamp created_at
+    timestamp last_login
+    boolean is_active
+  }
+  WORD_BOOKS {
+    int id PK
+    int user_id FK
+    string title
+    string description
+    boolean is_public
+    timestamp created_at
+    timestamp updated_at
+  }
+  WORDS {
+    int id PK
+    int word_book_id FK
+    int added_by FK
+    string word
+    string definition
+    string pronunciation
+    string part_of_speech
+    string example_sentence
+    string difficulty_level
+    timestamp created_at
+  }
+  WORD_TAGS {
+    int id PK
+    int word_id FK
+    string tag_name
+  }
+  TESTS {
+    int id PK
+    int user_id FK
+    int word_book_id FK
+    string test_type
+    int total_questions
+    int score
+    int time_taken_sec
+    timestamp taken_at
+  }
+  TEST_QUESTIONS {
+    int id PK
+    int test_id FK
+    int word_id FK
+    string question_text
+    string correct_answer
+    string user_answer
+    boolean is_correct
+  }
+  WORD_PROGRESS {
+    int id PK
+    int user_id FK
+    int word_id FK
+    int correct_count
+    int wrong_count
+    string mastery_level
+    timestamp last_reviewed
+  }
+  ADMIN_LOGS {
+    int id PK
+    int admin_id FK
+    string action_type
+    string target_table
+    int target_id
+    string description
+    timestamp created_at
+  }
+  ANNOUNCEMENTS {
+    int id PK
+    int created_by FK
+    string title
+    string content
+    boolean is_pinned
+    timestamp published_at
+    timestamp expires_at
+  }
+
+  USERS ||--o{ WORD_BOOKS : "owns"
+  USERS ||--o{ TESTS : "takes"
+  USERS ||--o{ WORD_PROGRESS : "tracks"
+  USERS ||--o{ ADMIN_LOGS : "performs"
+  USERS ||--o{ ANNOUNCEMENTS : "creates"
+  USERS ||--o{ WORDS : "adds"
+  WORD_BOOKS ||--o{ WORDS : "contains"
+  WORD_BOOKS ||--o{ TESTS : "used in"
+  WORDS ||--o{ WORD_TAGS : "has"
+  WORDS ||--o{ TEST_QUESTIONS : "appears in"
+  WORDS ||--o{ WORD_PROGRESS : "tracked by"
+  TESTS ||--o{ TEST_QUESTIONS : "includes"
+```
+---
 
 ## 📂 폴더 구조 (Project Structure) / 예상
 프로젝트의 확장성을 고려한 현재 디렉토리 구조입니다.
@@ -69,41 +170,22 @@ src/
 .
 .
 .
-
+```
 ⚙️ 시작 가이드 (Getting Started)
-# 1. 저장소 복제
+1. 저장소 복제
 git clone [https://github.com/your-repo/swe_edulex.git](https://github.com/your-repo/swe_edulex.git)
 
-# 2. 필수 패키지 설치
+2. 필수 패키지 설치
 npm install
 
-# 3. 환경 변수 설정
-# .env.local 파일을 생성하고 아래 키를 입력하세요.
+3. 환경 변수 설정
+ .env.local 파일을 생성하고 아래 키를 입력하세요.
 NEXT_PUBLIC_SUPABASE_URL=your_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key
 OPENAI_API_KEY=your_openai_key
 
-# 4. 개발 서버 실행
+4. 개발 서버 실행
 npm run dev
-```
 
-```mermaid
-erDiagram
-    CUSTOMER {
-        string name
-        string custNumber
-        string sector
-    }
-    ORDER {
-        int orderNumber
-        string deliveryAddress
-    }
-    LINE_ITEM {
-        string productCode
-        int quantity
-        float pricePerUnit
-    }
 
-    CUSTOMER ||--o{ ORDER : places
-    ORDER ||--|{ LINE_ITEM : contains
-```
+
