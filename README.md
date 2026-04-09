@@ -86,7 +86,7 @@ OPENAI_API_KEY=your_openai_key
 # 4. 개발 서버 실행
 npm run dev
 
-
+markdown
 ```mermaid
 erDiagram
     CUSTOMER {
@@ -103,6 +103,7 @@ erDiagram
         int quantity
         float pricePerUnit
     }
-    
+
     CUSTOMER ||--o{ ORDER : places
     ORDER ||--|{ LINE-ITEM : contains
+```
