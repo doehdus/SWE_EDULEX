@@ -86,7 +86,6 @@ OPENAI_API_KEY=your_openai_key
 # 4. 개발 서버 실행
 npm run dev
 
-markdown
 ```mermaid
 erDiagram
     CUSTOMER {
@@ -98,12 +97,12 @@ erDiagram
         int orderNumber
         string deliveryAddress
     }
-    LINE-ITEM {
+    LINE_ITEM {
         string productCode
         int quantity
         float pricePerUnit
     }
 
     CUSTOMER ||--o{ ORDER : places
-    ORDER ||--|{ LINE-ITEM : contains
+    ORDER ||--|{ LINE_ITEM : contains
 ```
