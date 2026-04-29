@@ -1,0 +1,4 @@
+project_id = "wuneastyskjxrbsefert"
+
+[functions.create-wordbook-from-pdf]
+verify_jwt = false
