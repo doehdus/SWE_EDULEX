@@ -114,12 +114,12 @@ AI가 버전 태그([NEW]/[UPD]/[DEL]) 적용하여 백로그 갱신
 | L02 | 사용자 로그인 | 사용자는 이메일/비밀번호 또는 소셜 계정으로 빠르게 접속할 수 있다. | 일반 로그인 + OAuth 모두 지원 | High |
 | L05 | 관리자 로그인 | 관리자는 별도 계정으로 로그인하여 관리자 전용 페이지에 접근할 수 있다. | 일반 사용자와 관리자 권한 분리 | High |
 | H01 | 캐릭터 프리뷰 + 전공/칭호 선택 | 사용자는 메인 화면에서 캐릭터 상태를 확인하고 전공(최대 2개)과 칭호를 선택할 수 있다. | 전공 변경 시 공식 단어장 자동 갱신 연동 | Medium |
-| H02 | 출석 체크 / 스트릭 | 사용자는 메인 화면에서 하루 1회 출석을 확인하고 별가루 보상을 받을 수 있다. | 별가루 지급 시 star_dust_logs 감사 로그 트랜잭션 처리 | Medium |
+| H02 | 출석 체크 / 스트릭 | 사용자는 메인 화면에서 하루 1회 출석을 확인하고 책갈피 보상을 받을 수 있다. | 책갈피 지급 시 star_dust_logs 감사 로그 트랜잭션 처리 | Medium |
 | H04 | PDF → AI 단어장 생성 | 사용자는 PDF를 업로드하여 AI가 자동 생성한 단어장을 즉시 만들 수 있다. | OpenAI API 연동, 단어장 2개 초과 시 생성 차단 | High |
-| H05 | 별가루 실시간 조회 | 사용자는 메인 화면에서 보유 중인 별가루 수량을 실시간으로 확인할 수 있다. | Supabase Realtime 동기화 | High |
+| H05 | 책갈피 실시간 조회 | 사용자는 메인 화면에서 보유 중인 책갈피 수량을 실시간으로 확인할 수 있다. | Supabase Realtime 동기화 | High |
 | N01 | 공식 단어장 조회 | 사용자는 선택 전공을 기반으로 공식 단어장 목록과 단어 카드를 조회할 수 있다. | H01 전공 선택 상태 연동, general_meaning optional 표시 | High |
 | N02 | 나만의 단어장 조회 | 사용자는 PDF→AI로 생성된 단어장 목록과 단어 카드를 조회하고 삭제할 수 있다. | 단어장 최대 2개, 삭제 시 cascade 처리 | High |
-| N03 | 테스트 (Lv1) | 사용자는 단어장을 선택해 Lv1 퀴즈를 풀고 결과와 별가루 보상을 받을 수 있다. | 뜻→영어 4지선다, 별가루 트랜잭션, wordbook_id 서버 검증 | High |
+| N03 | 테스트 (Lv1) | 사용자는 단어장을 선택해 Lv1 퀴즈를 풀고 결과와 책갈피 보상을 받을 수 있다. | 뜻→영어 4지선다, 책갈피 트랜잭션, wordbook_id 서버 검증 | High |
 | U04 | 단어장별 학습 진행률 | 사용자는 보유한 각 단어장의 학습 진행률을 퍼센트로 확인할 수 있다. | 학습 완료 단어 수 / 전체 단어 수 계산 | Medium |
 | A01 | 공식 단어장 CRUD | 관리자는 공식 단어장의 단어를 추가·수정·삭제할 수 있다. | 관리자 권한 검증 미들웨어 적용 | High |
 
@@ -181,7 +181,7 @@ AI가 버전 태그([NEW]/[UPD]/[DEL]) 적용하여 백로그 갱신
 
 ## 5. Sprint Goal
 
-> **"사용자가 EduLex에 가입하고, 전공 기반 공식 단어장과 AI가 생성한 나만의 단어장으로 학습을 시작하며, 퀴즈를 통해 암기 수준을 점검하고 별가루 보상을 받을 수 있다"**
+> **"사용자가 EduLex에 가입하고, 전공 기반 공식 단어장과 AI가 생성한 나만의 단어장으로 학습을 시작하며, 퀴즈를 통해 암기 수준을 점검하고 책갈피 보상을 받을 수 있다"**
 
 *단순 기능 목록이 아닌, 사용자가 경험하는 가치 흐름으로 정의하였다.*
 
@@ -199,7 +199,7 @@ AI가 버전 태그([NEW]/[UPD]/[DEL]) 적용하여 백로그 갱신
 | **팀A** | 1단계 | SBI-L01 회원가입 |
 | | 2단계 | SBI-L02 로그인, SBI-L05 관리자 로그인 |
 | | 3단계 | SBI-A01 공식단어장 CRUD, **SBI-H04** PDF→AI 생성 |
-| | 4단계 | SBI-H05 별가루 실시간 조회 |
+| | 4단계 | SBI-H05 책갈피 실시간 조회 |
 | **팀B** | 1단계 | SBI-H01 캐릭터 + 전공 선택 *(팀A 인증 완료 후 시작)* |
 | | 2단계 | SBI-H02 출석/스트릭, **SBI-N01** 공식단어장 조회 |
 | | 3단계 | SBI-N02 나만의 단어장 *(팀A H04 완료 후 연동)* |
@@ -563,7 +563,7 @@ Supabase 클라이언트: src/utils/supabase.js
 [구현 대상: SBI-H01 캐릭터 프리뷰 + 전공/칭호 선택 FE]
 세부 작업:
   1. 캐릭터 이미지 표시 컴포넌트
-  2. 레벨, 닉네임, 별가루, 현재 선택 전공·칭호 표시 UI
+  2. 레벨, 닉네임, 책갈피, 현재 선택 전공·칭호 표시 UI
   3. 전공 선택 UI — 드롭다운 또는 모달 (최대 2개 선택)
   4. 칭호 선택 UI — 보유 칭호 중 1개 선택, 없으면 비활성화
   5. 전공 변경 시 MajorContext 업데이트 → N01 공식 단어장 자동 갱신
@@ -588,7 +588,7 @@ DB 테이블: users (id, major, active_title, star_dust, level, nickname)
 
 [구현 대상: SBI-H01 BE]
 세부 작업:
-  1. 사용자 프로필 조회 API (전공, 칭호, 레벨, 별가루, 닉네임 포함)
+  1. 사용자 프로필 조회 API (전공, 칭호, 레벨, 책갈피, 닉네임 포함)
   2. 전공 선택 저장/수정 API — users.major 필드 UPDATE
   3. 칭호 선택 저장 API — users.active_title 필드 UPDATE
 
@@ -620,7 +620,7 @@ Supabase 클라이언트: src/utils/supabase.js
 
 [제약]
 - 당일 출석 여부는 페이지 진입 시 BE API로 확인
-- 출석 완료 시 별가루 수량이 H05 Realtime으로 자동 갱신됨 (별도 처리 불필요)
+- 출석 완료 시 책갈피 수량이 H05 Realtime으로 자동 갱신됨 (별도 처리 불필요)
 - 스트릭 데이터는 BE API 응답값 사용
 ```
 - 리뷰: AI가 출석 상태를 클라이언트 날짜 비교로만 확인하려 함 → "당일 출석 여부는 반드시 서버 DB 조회 결과로 판단해야 한다"고 재요청
@@ -637,7 +637,7 @@ DB 테이블: attendance (id, user_id, date, created_at), users (star_dust), sta
 [구현 대상: SBI-H02 출석 체크 BE]
 세부 작업:
   1. 출석 기록 저장 API — attendance 테이블 INSERT (오늘 날짜)
-  2. 출석 보상 별가루 지급 — DB 함수(트랜잭션)로 구현:
+  2. 출석 보상 책갈피 지급 — DB 함수(트랜잭션)로 구현:
      - users.star_dust += 보상량
      - star_dust_logs INSERT (change_amount=보상량, reason='attendance', ref_id=attendance.id)
   3. 스트릭 계산 로직 — 연속 출석일 수 반환
@@ -645,10 +645,10 @@ DB 테이블: attendance (id, user_id, date, created_at), users (star_dust), sta
 
 [제약]
 - RLS: attendance 테이블 INSERT는 본인+오늘날짜만 허용 (중복 출석 방지)
-- 별가루 지급은 반드시 단일 트랜잭션으로 처리 (users 업데이트 + 로그 INSERT 원자성)
+- 책갈피 지급은 반드시 단일 트랜잭션으로 처리 (users 업데이트 + 로그 INSERT 원자성)
 - DB 함수(Supabase rpc)로 트랜잭션 보장
 ```
-- 리뷰: AI가 별가루 지급을 두 번의 개별 UPDATE/INSERT로 구현 → "단일 DB 함수(RPC)로 트랜잭션 처리해야 한다, 중간 실패 시 롤백 보장이 필요하다"고 재요청
+- 리뷰: AI가 책갈피 지급을 두 번의 개별 UPDATE/INSERT로 구현 → "단일 DB 함수(RPC)로 트랜잭션 처리해야 한다, 중간 실패 시 롤백 보장이 필요하다"고 재요청
 
 ---
 
@@ -708,7 +708,7 @@ DB 테이블: user_wordbooks (id, user_id, title, created_at), user_words (id, w
 
 ---
 
-#### SBI-H05 | 별가루 실시간 조회
+#### SBI-H05 | 책갈피 실시간 조회
 
 **FE:**
 
@@ -719,9 +719,9 @@ DB 테이블: user_wordbooks (id, user_id, title, created_at), user_words (id, w
 기술스택: React, Tailwind CSS, Supabase Realtime
 Supabase 클라이언트: src/utils/supabase.js
 
-[구현 대상: SBI-H05 별가루 실시간 조회 FE]
+[구현 대상: SBI-H05 책갈피 실시간 조회 FE]
 세부 작업:
-  1. 별가루 수량 표시 UI (메인 화면 상단)
+  1. 책갈피 수량 표시 UI (메인 화면 상단)
   2. Supabase Realtime 구독 — users.star_dust 컬럼 변경 시 자동 갱신
 
 [제약]
@@ -740,7 +740,7 @@ Supabase 클라이언트: src/utils/supabase.js
 기술스택: Supabase (DB + Realtime)
 DB 테이블: users (star_dust)
 
-[구현 대상: SBI-H05 별가루 실시간 BE]
+[구현 대상: SBI-H05 책갈피 실시간 BE]
 세부 작업:
   1. Supabase Realtime 설정 확인 — users 테이블 Realtime 활성화
   2. star_dust 컬럼 변경 시 클라이언트로 이벤트 전파 확인
@@ -869,12 +869,12 @@ Supabase 클라이언트: src/utils/supabase.js
 세부 작업:
   1. 테스트 시작 화면 (단어장 선택 — 공식/나만의 단어장 목록)
   2. Lv1 퀴즈 UI (뜻 → 영어 4지선다 객관식)
-  3. 테스트 결과 화면 (정답률 표시 + 별가루 획득량 표시)
+  3. 테스트 결과 화면 (정답률 표시 + 책갈피 획득량 표시)
 
 [제약]
 - 문제는 BE API에서 생성하여 반환 (클라이언트 랜덤 생성 금지)
 - 정답 제출은 문항별이 아닌 전체 완료 후 일괄 제출
-- 결과 화면: 정답률(%) + 획득 별가루 수량 표시
+- 결과 화면: 정답률(%) + 획득 책갈피 수량 표시
 - Lv2~4 UI 없음 (MVP는 Lv1만)
 ```
 - 리뷰: AI가 정답 여부를 클라이언트에서 계산 → "정답 검증은 BE에서 처리해야 한다, 클라이언트에 정답 데이터 노출 금지"로 재요청
@@ -896,14 +896,14 @@ DB 테이블: test_results (id, user_id, wordbook_id, wordbook_type, score, crea
   2. 테스트 결과 저장 API:
      - wordbook_type에 따라 wordbook_id 존재 여부 서버 검증
      - test_results INSERT (본인만)
-  3. 테스트 참여 보상 별가루 지급 — DB 함수(트랜잭션):
+  3. 테스트 참여 보상 책갈피 지급 — DB 함수(트랜잭션):
      - users.star_dust += 보상량
      - star_dust_logs INSERT (change_amount=보상량, reason='test_reward', ref_id=test_results.id)
 
 [제약]
 - 문제 생성 시 정답 정보는 서버에서 세션/임시 저장, 클라이언트에 정답 미포함
 - RLS: test_results INSERT는 본인만 허용
-- 별가루 지급은 단일 DB 함수(RPC)로 트랜잭션 보장
+- 책갈피 지급은 단일 DB 함수(RPC)로 트랜잭션 보장
 - wordbook_id 검증: 공식 단어장이면 official_wordbooks, 나만의 단어장이면 user_wordbooks에서 존재 확인
 ```
 - 리뷰: AI가 문제 생성 시 정답 인덱스를 API 응답에 포함 → "정답 인덱스를 클라이언트에 노출하면 치팅 가능, 서버 세션에만 보관해야 한다"고 재요청
@@ -1018,9 +1018,9 @@ DB 테이블: official_wordbooks (id, major, title), official_words (id, wordboo
 | L02 | 로그인 (일반 + OAuth) | |
 | L05 | 관리자 로그인 및 권한 분리 | |
 | H01 | 캐릭터 프리뷰 + 전공 선택 | |
-| H02 | 출석 체크 / 스트릭 + 별가루 보상 | |
+| H02 | 출석 체크 / 스트릭 + 책갈피 보상 | |
 | H04 | PDF → AI 단어장 생성 | |
-| H05 | 별가루 실시간 조회 | |
+| H05 | 책갈피 실시간 조회 | |
 | N01 | 공식 단어장 조회 (전공 연동) | |
 | N02 | 나만의 단어장 조회 + 삭제 | |
 | N03 | 테스트 Lv1 + 결과 저장 + 보상 | |
