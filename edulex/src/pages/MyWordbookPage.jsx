@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, Trash2, BookOpen, Search, Sparkles, Hash } from 'lucide-react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
 import PdfUploadBar from '../components/PdfUploadBar'
@@ -8,45 +9,77 @@ import { BOOK_COLORS } from '../constants/theme'
 
 // ── 사이드바: 단어장 목록 ─────────────────────────────────────────
 
-function WordbookSidebar({ wordbooks, selectedWb, onSelect, onDelete }) {
+function WordbookSidebar({ wordbooks, selectedWb, onSelect, onDelete, wordCounts }) {
   return (
-    <aside className="w-56 shrink-0 sticky top-6">
-      <p className="text-xs font-bold uppercase tracking-widest mb-4 px-1" style={{ color: '#8b6e4e' }}>
-        단어장
-      </p>
-      <div className="space-y-2 max-h-[calc(100vh-10rem)] overflow-y-auto pr-1">
+    <aside className="w-60 shrink-0 sticky top-6">
+      <div className="flex items-center gap-2 mb-4 px-1">
+        <BookOpen size={14} strokeWidth={2} style={{ color: '#8b6e4e' }} />
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#8b6e4e' }}>
+          내 단어장
+        </p>
+        <span
+          className="ml-auto text-xs font-bold px-1.5 py-0.5 rounded-full"
+          style={{ background: '#e8ddd0', color: '#8b6e4e' }}
+        >
+          {wordbooks.length}
+        </span>
+      </div>
+
+      <div className="space-y-2 max-h-[calc(100vh-14rem)] overflow-y-auto pr-1">
         {wordbooks.map((wb, idx) => {
           const color = BOOK_COLORS[idx % BOOK_COLORS.length]
           const isSelected = selectedWb?.id === wb.id
+          const count = wordCounts[wb.id] ?? null
+
           return (
             <button
               key={wb.id}
               onClick={() => onSelect(wb, idx)}
               style={{
                 borderLeftColor: color.spine,
-                background: isSelected ? color.spine : '#fff',
-                boxShadow: isSelected ? `4px 4px 0 ${color.spine}88` : '2px 2px 0 #d4b896',
+                background: isSelected
+                  ? `linear-gradient(135deg, ${color.spine}, ${color.cover})`
+                  : '#fff',
+                boxShadow: isSelected
+                  ? `0 4px 16px ${color.spine}44`
+                  : '0 2px 8px #00000010',
+                transform: isSelected ? 'translateX(2px)' : 'translateX(0)',
               }}
-              className="w-full text-left px-4 py-3 rounded-r-xl text-sm transition-all duration-200 border-l-4 relative overflow-hidden group"
+              className="w-full text-left px-4 py-3.5 rounded-r-2xl rounded-l-sm text-sm transition-all duration-200 border-l-4 relative overflow-hidden group"
             >
-              <div
-                className="absolute inset-0 opacity-10"
-                style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 11px, #00000022 11px, #00000022 12px)' }}
-              />
               <div className="flex items-start justify-between relative">
-                <div className="min-w-0">
-                  <p className={`font-bold text-sm truncate ${isSelected ? 'text-white' : ''}`} style={!isSelected ? { color: '#2d1b00' } : {}}>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="font-bold text-sm truncate leading-snug"
+                    style={{ color: isSelected ? '#fff' : '#2d1b00' }}
+                  >
                     {wb.title}
                   </p>
-                  <p className={`text-xs mt-0.5 ${isSelected ? 'text-white/70' : ''}`} style={!isSelected ? { color: '#8b6e4e' } : {}}>
-                    AI 생성
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Sparkles size={10} strokeWidth={2} style={{ color: isSelected ? 'rgba(255,255,255,0.6)' : color.spine }} />
+                    <p className="text-xs" style={{ color: isSelected ? 'rgba(255,255,255,0.7)' : '#8b6e4e' }}>
+                      AI 생성
+                    </p>
+                    {count !== null && (
+                      <span
+                        className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{
+                          background: isSelected ? 'rgba(255,255,255,0.2)' : color.accent,
+                          color: isSelected ? '#fff' : color.spine,
+                        }}
+                      >
+                        {count}단어
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={e => { e.stopPropagation(); onDelete(wb) }}
-                  className={`text-xs ml-1 shrink-0 opacity-0 group-hover:opacity-100 transition ${isSelected ? 'text-white/60 hover:text-white' : 'text-gray-300 hover:text-red-400'}`}
+                  className={`ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg ${
+                    isSelected ? 'hover:bg-white/20 text-white/60 hover:text-white' : 'hover:bg-red-50 text-gray-300 hover:text-red-400'
+                  }`}
                 >
-                  삭제
+                  <Trash2 size={13} strokeWidth={2} />
                 </button>
               </div>
             </button>
@@ -60,36 +93,79 @@ function WordbookSidebar({ wordbooks, selectedWb, onSelect, onDelete }) {
 // ── 목차 (책 왼쪽 페이지) ─────────────────────────────────────────
 
 function TableOfContents({ words, selectedWord, selectedWb, color, onSelectWord }) {
+  const [query, setQuery] = useState('')
+  const filtered = words.filter(w =>
+    w.english.toLowerCase().includes(query.toLowerCase()) ||
+    (w.general_meaning ?? '').includes(query)
+  )
+
   return (
     <div
-      className="w-52 shrink-0 rounded-l-lg overflow-hidden"
-      style={{ background: '#faf6f0', boxShadow: 'inset -4px 0 8px #00000015, 2px 0 0 #d4b896', minHeight: '560px' }}
+      className="w-56 shrink-0 rounded-l-2xl overflow-hidden flex flex-col"
+      style={{
+        background: '#faf6f0',
+        boxShadow: 'inset -3px 0 12px #00000012, 2px 0 0 #d4b896',
+        minHeight: '580px',
+      }}
     >
-      <div className="h-2 w-full" style={{ background: color.spine }} />
-      <div className="p-5">
-        <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: color.spine }}>목차</p>
-        <p className="text-base font-extrabold mb-4 leading-tight" style={{ color: '#2d1b00' }}>{selectedWb.title}</p>
-        <div className="border-t border-dashed border-[#d4b896] mb-4" />
-        <div className="space-y-0.5 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 18rem)' }}>
-          {words.map((word, idx) => (
-            <button
-              key={word.id}
-              onClick={() => onSelectWord(word, idx)}
-              className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-150"
-              style={{ background: selectedWord?.id === word.id ? color.spine + '18' : 'transparent' }}
-            >
-              <span className="text-[10px] w-5 text-right shrink-0 font-mono" style={{ color: color.spine + '99' }}>
-                {idx + 1}
-              </span>
-              <span className="flex-1 border-b border-dotted border-[#d4b896] mx-1" />
-              <span
-                className="text-xs font-semibold truncate max-w-22.5 text-right"
-                style={{ color: selectedWord?.id === word.id ? color.spine : '#2d1b00' }}
+      <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${color.spine}, ${color.cover})` }} />
+
+      <div className="p-5 flex-1 flex flex-col">
+        <div className="mb-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] mb-1" style={{ color: color.spine }}>목차</p>
+          <p className="text-sm font-extrabold leading-tight line-clamp-2" style={{ color: '#2d1b00' }}>{selectedWb.title}</p>
+          <p className="text-[10px] mt-1 font-medium" style={{ color: '#b09070' }}>
+            총 {words.length}개 단어
+          </p>
+        </div>
+
+        {/* 검색 */}
+        <div className="relative mb-3">
+          <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: '#b09070' }} />
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="단어 검색..."
+            className="w-full pl-7 pr-3 py-1.5 rounded-lg text-xs outline-none border transition-all"
+            style={{
+              background: '#fff',
+              borderColor: query ? color.spine + '80' : '#e8ddd0',
+              color: '#2d1b00',
+            }}
+          />
+        </div>
+
+        <div className="border-t border-dashed border-[#d4b896] mb-3" />
+
+        <div className="space-y-0.5 overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 22rem)' }}>
+          {filtered.map((word, i) => {
+            const realIdx = words.findIndex(w => w.id === word.id)
+            const isActive = selectedWord?.id === word.id
+            return (
+              <button
+                key={word.id}
+                onClick={() => onSelectWord(word, realIdx)}
+                className="w-full text-left flex items-center gap-2 px-2.5 py-2 rounded-xl transition-all duration-150"
+                style={{
+                  background: isActive ? color.spine + '15' : 'transparent',
+                  borderLeft: isActive ? `2px solid ${color.spine}` : '2px solid transparent',
+                }}
               >
-                {word.english}
-              </span>
-            </button>
-          ))}
+                <span className="text-[10px] w-4 text-right shrink-0 font-mono" style={{ color: color.spine + '80' }}>
+                  {realIdx + 1}
+                </span>
+                <span
+                  className="flex-1 text-xs font-semibold truncate text-left"
+                  style={{ color: isActive ? color.spine : '#2d1b00' }}
+                >
+                  {word.english}
+                </span>
+              </button>
+            )
+          })}
+          {filtered.length === 0 && (
+            <p className="text-xs text-center py-4" style={{ color: '#b09070' }}>검색 결과 없음</p>
+          )}
         </div>
       </div>
     </div>
@@ -101,82 +177,136 @@ function TableOfContents({ words, selectedWord, selectedWb, color, onSelectWord 
 function WordPage({ word, idx, total, color, pageFlip, onPrev, onNext }) {
   return (
     <div
-      className="flex-1 min-w-0 rounded-r-lg overflow-hidden relative"
-      style={{ background: '#fffdf7', boxShadow: '4px 4px 16px #00000020', minHeight: '560px' }}
+      className="flex-1 min-w-0 rounded-r-2xl overflow-hidden relative flex flex-col"
+      style={{
+        background: '#fffdf7',
+        boxShadow: '6px 6px 24px #00000018',
+        minHeight: '580px',
+      }}
     >
-      <div className="h-2 w-full" style={{ background: color.spine }} />
+      <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${color.spine}, ${color.cover})` }} />
+
+      {/* 배경 줄 */}
       <div
-        className="absolute inset-0 top-2 pointer-events-none"
+        className="absolute inset-0 top-1.5 pointer-events-none"
         style={{
-          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 31px, #e8ddd0 31px, #e8ddd0 32px)',
-          backgroundPositionY: '48px',
+          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 31px, #f0e8dc 31px, #f0e8dc 32px)',
+          backgroundPositionY: '52px',
         }}
       />
 
-      <div className="relative p-8 transition-opacity duration-180" style={{ opacity: pageFlip ? 0 : 1 }}>
+      <div
+        className="relative flex-1 flex flex-col transition-all duration-200"
+        style={{ opacity: pageFlip ? 0 : 1, transform: pageFlip ? 'translateY(4px)' : 'translateY(0)' }}
+      >
         {word ? (
-          <>
-            <div className="flex items-center justify-between mb-6">
-              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: color.spine }}>
-                나만의 단어장
-              </span>
-              <span className="text-xs font-mono" style={{ color: '#b09070' }}>
-                p. {idx + 1} / {total}
+          <div className="p-8 flex flex-col h-full">
+
+            {/* 상단 헤더 */}
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-2">
+                <div
+                  className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
+                  style={{ background: color.accent, color: color.spine }}
+                >
+                  나만의 단어장
+                </div>
+              </div>
+              <span className="text-xs font-mono font-semibold" style={{ color: '#b09070' }}>
+                {idx + 1} / {total}
               </span>
             </div>
 
-            <div className="mb-2">
-              <h2 className="text-5xl font-black leading-none tracking-tight" style={{ color: '#2d1b00' }}>
-                {word.english}
-              </h2>
-              <div className="h-1 w-16 rounded-full mt-3" style={{ background: color.spine }} />
+            {/* 영단어 */}
+            <div className="mb-8">
+              <div className="flex items-end gap-3 flex-wrap">
+                <h2
+                  className="text-5xl font-black leading-none tracking-tight"
+                  style={{ color: '#2d1b00' }}
+                >
+                  {word.english}
+                </h2>
+                <Hash size={16} style={{ color: color.spine + '60', marginBottom: 6 }} />
+              </div>
+              <div className="h-1 w-20 rounded-full mt-4" style={{ background: `linear-gradient(90deg, ${color.spine}, ${color.accent})` }} />
             </div>
 
-            <div className="mt-8 space-y-6">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] mb-2" style={{ color: color.spine + 'aa' }}>
-                  일반적 의미
+            {/* 의미 영역 */}
+            <div className="space-y-6 flex-1">
+
+              {/* 일반 의미 */}
+              <div
+                className="rounded-2xl p-5"
+                style={{ background: color.accent + '25', border: `1px solid ${color.accent}` }}
+              >
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: color.spine + '80' }} />
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: color.spine + 'aa' }}>
+                    일반적 의미
+                  </p>
+                </div>
+                <p className="text-base font-semibold leading-relaxed" style={{ color: '#2d1b00' }}>
+                  {word.general_meaning}
                 </p>
-                <p className="text-lg font-medium leading-relaxed" style={{ color: '#2d1b00' }}>{word.general_meaning}</p>
-                <p className="text-sm mt-2 italic border-l-2 pl-3" style={{ color: '#8b6e4e', borderColor: color.accent }}>
-                  {word.general_example}
-                </p>
+                {word.general_example && (
+                  <p
+                    className="text-sm mt-3 italic leading-relaxed pl-3 border-l-2"
+                    style={{ color: '#8b6e4e', borderColor: color.accent }}
+                  >
+                    "{word.general_example}"
+                  </p>
+                )}
               </div>
 
-              <div className="border-t border-dashed border-[#d4b896] pt-6">
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] mb-2" style={{ color: color.spine }}>
-                  전공 의미
+              {/* 전공 의미 */}
+              <div
+                className="rounded-2xl p-5"
+                style={{ background: color.spine + '08', border: `1px solid ${color.spine}30` }}
+              >
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: color.spine }} />
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: color.spine }}>
+                    전공 의미
+                  </p>
+                </div>
+                <p className="text-base font-bold leading-relaxed" style={{ color: '#2d1b00' }}>
+                  {word.major_meaning}
                 </p>
-                <p className="text-lg font-bold leading-relaxed" style={{ color: '#2d1b00' }}>{word.major_meaning}</p>
                 {word.major_example && (
-                  <p className="text-sm mt-2 italic border-l-2 pl-3" style={{ color: '#8b6e4e', borderColor: color.spine }}>
-                    {word.major_example}
+                  <p
+                    className="text-sm mt-3 italic leading-relaxed pl-3 border-l-2"
+                    style={{ color: '#8b6e4e', borderColor: color.spine }}
+                  >
+                    "{word.major_example}"
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center justify-between mt-12 pt-4 border-t border-[#e8ddd0]">
+            {/* 하단 네비게이션 */}
+            <div className="flex items-center justify-between mt-8 pt-5 border-t border-[#e8ddd0]">
               <button
                 onClick={onPrev}
                 disabled={!idx}
-                className="flex items-center gap-2 text-sm font-semibold transition-all disabled:opacity-20"
-                style={{ color: color.spine }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-20 disabled:cursor-not-allowed hover:scale-105"
+                style={{ color: color.spine, background: color.accent + '30' }}
               >
-                <span className="text-lg">←</span> 이전 단어
+                <ChevronLeft size={15} strokeWidth={2.5} /> 이전
               </button>
 
-              <div className="flex gap-1">
-                {Array.from({ length: Math.min(5, total) }, (_, i) => {
-                  const realIdx = Math.max(0, idx - 2) + i
+              <div className="flex gap-1.5 items-center">
+                {Array.from({ length: Math.min(7, total) }, (_, i) => {
+                  const realIdx = Math.max(0, Math.min(idx - 3, total - 7)) + i
+                  const isActive = realIdx === idx
                   return (
                     <div
                       key={realIdx}
-                      className="rounded-full transition-all"
+                      className="rounded-full transition-all duration-200"
                       style={{
-                        width: realIdx === idx ? 20 : 6,
+                        width: isActive ? 24 : 6,
                         height: 6,
-                        background: realIdx === idx ? color.spine : color.accent,
+                        background: isActive ? color.spine : color.accent,
+                        opacity: isActive ? 1 : 0.5,
                       }}
                     />
                   )
@@ -186,15 +316,17 @@ function WordPage({ word, idx, total, color, pageFlip, onPrev, onNext }) {
               <button
                 onClick={onNext}
                 disabled={idx >= total - 1}
-                className="flex items-center gap-2 text-sm font-semibold transition-all disabled:opacity-20"
-                style={{ color: color.spine }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-20 disabled:cursor-not-allowed hover:scale-105"
+                style={{ color: color.spine, background: color.accent + '30' }}
               >
-                다음 단어 <span className="text-lg">→</span>
+                다음 <ChevronRight size={15} strokeWidth={2.5} />
               </button>
             </div>
-          </>
+          </div>
         ) : (
-          <EmptyState icon="📖" message="왼쪽 목차에서 단어를 선택하세요" />
+          <div className="flex-1 flex items-center justify-center">
+            <EmptyState message="왼쪽 목차에서 단어를 선택하세요" />
+          </div>
         )}
       </div>
     </div>
@@ -214,6 +346,7 @@ export default function MyWordbookPage() {
   const [pageFlip, setPageFlip]               = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(null)
   const [loading, setLoading]                 = useState(false)
+  const [wordCounts, setWordCounts]           = useState({})
   const pageRef = useRef(null)
 
   useEffect(() => { fetchWordbooks() }, [user])
@@ -224,7 +357,21 @@ export default function MyWordbookPage() {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-    setWordbooks(data ?? [])
+    const wbs = data ?? []
+    setWordbooks(wbs)
+    if (wbs.length > 0) {
+      const counts = {}
+      await Promise.all(
+        wbs.map(async wb => {
+          const { count } = await supabase
+            .from('user_words')
+            .select('*', { count: 'exact', head: true })
+            .eq('wordbook_id', wb.id)
+          counts[wb.id] = count ?? 0
+        })
+      )
+      setWordCounts(counts)
+    }
   }
 
   const selectWordbook = async (wb, colorIdx) => {
@@ -253,23 +400,46 @@ export default function MyWordbookPage() {
   const goNext = () => selectedIdx < words.length - 1 && handleSelectWord(words[selectedIdx + 1], selectedIdx + 1)
   const goPrev = () => selectedIdx > 0               && handleSelectWord(words[selectedIdx - 1], selectedIdx - 1)
 
-  return (
-    <div className="min-h-screen p-6" style={{ background: '#f5f0e8' }}>
+  const totalWords = Object.values(wordCounts).reduce((a, b) => a + b, 0)
 
-      <div className="max-w-6xl mx-auto mb-6">
-        <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#2d1b00' }}>나만의 단어장</h1>
-        <p className="text-sm mt-1" style={{ color: '#8b6e4e' }}>PDF를 업로드하면 AI가 전공 단어를 자동 추출합니다 (최대 2개)</p>
+  return (
+    <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #f7f3ec 0%, #ede5d8 100%)' }}>
+
+      {/* 헤더 영역 */}
+      <div className="max-w-6xl mx-auto px-6 pt-8 pb-6">
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight" style={{ color: '#2d1b00' }}>나만의 단어장</h1>
+            <p className="text-sm mt-1.5" style={{ color: '#8b6e4e' }}>
+              PDF를 업로드하면 AI가 전공 단어를 자동 추출합니다 (최대 2개)
+            </p>
+          </div>
+
+          {/* 통계 뱃지 */}
+          <div className="flex gap-3">
+            <div className="px-4 py-2.5 rounded-2xl text-center" style={{ background: '#fff', boxShadow: '0 2px 12px #00000010' }}>
+              <p className="text-xl font-black" style={{ color: '#2d1b00' }}>{wordbooks.length}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#8b6e4e' }}>단어장</p>
+            </div>
+            <div className="px-4 py-2.5 rounded-2xl text-center" style={{ background: '#fff', boxShadow: '0 2px 12px #00000010' }}>
+              <p className="text-xl font-black" style={{ color: '#2d1b00' }}>{totalWords}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#8b6e4e' }}>총 단어</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="max-w-6xl mx-auto mb-6">
+      {/* PDF 업로드 바 */}
+      <div className="max-w-6xl mx-auto px-6 mb-6">
         <PdfUploadBar wordbookCount={wordbooks.length} onComplete={fetchWordbooks} />
       </div>
 
-      <div className="max-w-6xl mx-auto flex gap-8 items-start">
+      {/* 본문 */}
+      <div className="max-w-6xl mx-auto px-6 pb-10 flex gap-8 items-start">
 
         {wordbooks.length === 0 ? (
           <div className="flex-1 flex items-center justify-center min-h-96">
-            <EmptyState icon="📂" message="아직 생성된 단어장이 없습니다." sub="PDF를 업로드하여 단어장을 만들어보세요." />
+            <EmptyState message="아직 생성된 단어장이 없습니다." sub="PDF를 업로드하여 단어장을 만들어보세요." />
           </div>
         ) : (
           <>
@@ -278,11 +448,12 @@ export default function MyWordbookPage() {
               selectedWb={selectedWb}
               onSelect={selectWordbook}
               onDelete={setShowDeleteModal}
+              wordCounts={wordCounts}
             />
 
             {!selectedWb ? (
               <div className="flex-1 flex items-center justify-center min-h-96">
-                <EmptyState icon="📚" message="왼쪽에서 단어장을 선택하세요" />
+                <EmptyState message="왼쪽에서 단어장을 선택하세요" />
               </div>
             ) : loading ? (
               <div className="flex-1 flex items-center justify-center min-h-96">
