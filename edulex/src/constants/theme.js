@@ -10,6 +10,23 @@ export const COLOR = {
   brownMid:'#8b6e4e',
 }
 
+// ── 도서관 테마 팔레트 (메인 홈페이지) ───────────────────────────
+export const LIB = {
+  parchment:  '#f5ede0',   // 양피지 배경
+  parchmentDark: '#e8d5b7',
+  wood:       '#5c3a1e',   // 다크 우드 (서가)
+  woodLight:  '#8b5e3c',   // 라이트 우드
+  woodMid:    '#a0724a',
+  cream:      '#fdf6ec',   // 카드 배경
+  gold:       '#c9a84c',   // 골드 강조
+  goldLight:  '#f0d080',
+  deepRed:    '#8b1a1a',   // 딥 레드 (책 포인트)
+  ink:        '#2c1a0e',   // 잉크 (주 텍스트)
+  inkMid:     '#6b4226',   // 중간 갈색 텍스트
+  inkLight:   '#a0724a',   // 연한 갈색 텍스트
+  shelfLine:  '#c4a882',   // 선반 선
+}
+
 // ── 전공 목록 ─────────────────────────────────────────────────────
 export const MAJORS = ['컴퓨터과학', '경영학', '역사학', '의학', '법학', '심리학']
 

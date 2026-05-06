@@ -53,13 +53,13 @@ export default function AttendanceStreak() {
     if (checkedToday || loading) return
     setLoading(true)
 
-    // DB 함수로 출석 + 별가루 트랜잭션 처리 (SBI-H02)
+    // DB 함수로 출석 + 책갈피 트랜잭션 처리 (SBI-H02)
     const { error } = await supabase.rpc('check_attendance', { p_user_id: user.id })
 
     if (!error) {
       setCheckedToday(true)
       setStreak(s => s + 1)
-      setRewardMsg('+10 별가루 획득!')
+      setRewardMsg('+10 책갈피 획득!')
       setTimeout(() => setRewardMsg(''), 2500)
     }
     setLoading(false)

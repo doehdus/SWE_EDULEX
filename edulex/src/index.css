@@ -7,6 +7,15 @@
 body {
   margin: 0;
   font-family: 'Segoe UI', system-ui, sans-serif;
-  background-color: #f8f7ff;
-  color: #1a1a2e;
+  background-color: #f5ede0;
+  color: #2c1a0e;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-4px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }

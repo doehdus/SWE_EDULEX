@@ -13,6 +13,7 @@ export function useMainPage() {
   const [rewardMsg, setRewardMsg]         = useState('')
   const [recentWordbook, setRecentWordbook] = useState(null)
   const [recentQuiz, setRecentQuiz]       = useState(null)
+  const [attendedDates, setAttendedDates] = useState(new Set())
 
   useEffect(() => {
     if (!user) return
@@ -48,6 +49,8 @@ export function useMainPage() {
       .limit(30)
 
     if (!data || data.length === 0) { setStreak(0); return }
+
+    setAttendedDates(new Set(data.map(r => r.date)))
 
     let count  = 0
     let cursor = new Date(todayStr())
@@ -87,7 +90,8 @@ export function useMainPage() {
     if (!error) {
       setCheckedToday(true)
       setStreak(s => s + 1)
-      setRewardMsg('+10 별가루 획득!')
+      setAttendedDates(prev => new Set([...prev, todayStr()]))
+      setRewardMsg('+10 책갈피 획득!')
       setTimeout(() => setRewardMsg(''), 2500)
     }
     setLoading(false)
@@ -104,6 +108,7 @@ export function useMainPage() {
     streak, checkedToday, loading, rewardMsg,
     recentWordbook, recentQuiz,
     last7Days, today: todayStr,
+    attendedDates,
     handleAttendance,
   }
 }

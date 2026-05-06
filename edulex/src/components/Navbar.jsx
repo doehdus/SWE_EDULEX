@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Library, NotebookText, FlaskConical, BarChart2, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { LIB } from '../constants/theme'
 import logo from '../assets/logo.png'
 import icon1 from '../assets/icon1.png'
 import icon2 from '../assets/icon2.png'
@@ -18,10 +20,10 @@ import icon12 from '../assets/icon12.png'
 const ICONS = [icon1, icon2, icon3, icon4, icon5, icon6, icon7, icon8, icon9, icon10, icon11, icon12]
 
 const MENU_ITEMS = [
-  { path: '/wordbook/official', label: '공식 단어장', icon: '📚' },
-  { path: '/wordbook/my', label: '나만의 단어장', icon: '📝' },
-  { path: '/quiz', label: '테스트', icon: '🎮' },
-  { path: '/dashboard', label: '학습 현황', icon: '📊' },
+  { path: '/wordbook/official', label: '공식 단어장', icon: <Library size={18} strokeWidth={1.8} /> },
+  { path: '/wordbook/my',       label: '나만의 단어장', icon: <NotebookText size={18} strokeWidth={1.8} /> },
+  { path: '/quiz',              label: '테스트',       icon: <FlaskConical size={18} strokeWidth={1.8} /> },
+  { path: '/dashboard',        label: '학습 현황',    icon: <BarChart2 size={18} strokeWidth={1.8} /> },
 ]
 
 export default function Navbar() {
@@ -43,7 +45,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+      <nav className="px-6 py-3 flex items-center justify-between sticky top-0 z-40" style={{ background: LIB.cream, borderBottom: `1px solid ${LIB.shelfLine}` }}>
         {/* 로고 */}
         <Link to="/"><img src={logo} alt="EduLex" className="h-16 w-auto" /></Link>
 
@@ -54,25 +56,25 @@ export default function Navbar() {
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setProfileOpen(v => !v)}
-              className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#1a3a5c] hover:border-[#0d9488] transition"
+              className="w-10 h-10 rounded-full overflow-hidden border-2 transition"
+              style={{ borderColor: LIB.woodLight }}
               title="아이콘 변경"
             >
               <img src={selectedIcon} alt="내 아이콘" className="w-full h-full object-cover" />
             </button>
 
             {profileOpen && (
-              <div className="absolute right-0 top-12 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 w-72 overflow-hidden">
+              <div className="absolute right-0 top-12 rounded-2xl shadow-xl z-50 w-72 overflow-hidden" style={{ background: LIB.cream, border: `1px solid ${LIB.shelfLine}` }}>
                 {/* 아이콘 선택 */}
-                <div className="px-4 pt-4 pb-3 border-b border-gray-100">
-                  <p className="text-xs font-bold text-gray-400 mb-3">아이콘 선택</p>
+                <div className="px-4 pt-4 pb-3" style={{ borderBottom: `1px solid ${LIB.parchmentDark}` }}>
+                  <p className="text-xs font-bold mb-3" style={{ color: LIB.inkLight }}>아이콘 선택</p>
                   <div className="grid grid-cols-4 gap-2">
                     {ICONS.map((ic, i) => (
                       <button
                         key={i}
                         onClick={() => { setSelectedIcon(ic); setProfileOpen(false) }}
-                        className={`w-10 h-10 rounded-full overflow-hidden border-2 transition hover:scale-110 ${
-                          selectedIcon === ic ? 'border-[#0d9488]' : 'border-transparent hover:border-gray-300'
-                        }`}
+                        className="w-10 h-10 rounded-full overflow-hidden border-2 transition hover:scale-110"
+                        style={{ borderColor: selectedIcon === ic ? LIB.gold : 'transparent' }}
                       >
                         <img src={ic} alt={`icon${i + 1}`} className="w-full h-full object-cover" />
                       </button>
@@ -82,9 +84,10 @@ export default function Navbar() {
                 {/* 로그아웃 */}
                 <button
                   onClick={async () => { setProfileOpen(false); await signOut(); navigate('/login') }}
-                  className="w-full text-left px-4 py-3 text-sm font-semibold text-red-500 hover:bg-red-50 transition flex items-center gap-2"
+                  className="w-full text-left px-4 py-3 text-sm font-semibold transition flex items-center gap-2"
+                  style={{ color: LIB.deepRed }}
                 >
-                  <span>🚪</span> 로그아웃
+                  <LogOut size={15} strokeWidth={2} /> 로그아웃
                 </button>
               </div>
             )}
@@ -93,12 +96,12 @@ export default function Navbar() {
           {/* 햄버거 메뉴 */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="flex flex-col gap-1.5 p-2 rounded-lg hover:bg-gray-100 transition"
+            className="flex flex-col gap-1.5 p-2 rounded-lg transition hover:opacity-70"
             title="메뉴"
           >
-            <span className="block w-5 h-0.5 bg-[#1a3a5c]" />
-            <span className="block w-5 h-0.5 bg-[#1a3a5c]" />
-            <span className="block w-5 h-0.5 bg-[#1a3a5c]" />
+            <span className="block w-5 h-0.5 rounded-full" style={{ background: LIB.wood }} />
+            <span className="block w-5 h-0.5 rounded-full" style={{ background: LIB.wood }} />
+            <span className="block w-5 h-0.5 rounded-full" style={{ background: LIB.wood }} />
           </button>
         </div>
       </nav>
@@ -110,15 +113,20 @@ export default function Navbar() {
 
       {/* 사이드바 */}
       <aside
-        className={`fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-300 ${
+        className={`fixed top-0 right-0 h-full w-72 shadow-2xl z-50 flex flex-col transition-transform duration-300 ${
           sidebarOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
+        style={{ background: LIB.cream, borderLeft: `1px solid ${LIB.shelfLine}` }}
       >
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-          <span className="text-lg font-extrabold text-[#1a3a5c]">메뉴</span>
+        {/* 사이드바 상단 책등 라인 */}
+        <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${LIB.wood}, ${LIB.woodLight})` }} />
+
+        <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: `1px solid ${LIB.parchmentDark}` }}>
+          <span className="text-lg font-extrabold" style={{ color: LIB.wood }}>메뉴</span>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="text-gray-400 hover:text-gray-600 transition text-2xl leading-none"
+            className="text-2xl leading-none transition hover:opacity-50"
+            style={{ color: LIB.inkLight }}
           >
             ×
           </button>
@@ -130,24 +138,25 @@ export default function Navbar() {
               key={path}
               to={path}
               onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition
-                ${pathname === path
-                  ? 'bg-[#1a3a5c] text-white'
-                  : 'text-gray-600 hover:bg-[#f0fdfa] hover:text-[#0d9488]'
-                }`}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition"
+              style={pathname === path
+                ? { background: LIB.wood, color: LIB.parchment }
+                : { color: LIB.inkMid }
+              }
             >
-              <span className="text-xl">{icon}</span>
+              {icon}
               {label}
             </Link>
           ))}
         </nav>
 
-        <div className="px-6 py-5 border-t border-gray-100">
+        <div className="px-6 py-5" style={{ borderTop: `1px solid ${LIB.parchmentDark}` }}>
           <button
             onClick={async () => { await signOut(); navigate('/login'); setSidebarOpen(false) }}
-            className="w-full text-sm text-red-400 hover:text-red-600 transition text-left flex items-center gap-2"
+            className="w-full text-sm transition text-left flex items-center gap-2 font-semibold"
+            style={{ color: LIB.deepRed }}
           >
-            <span>🚪</span> 로그아웃
+            <LogOut size={15} strokeWidth={2} /> 로그아웃
           </button>
         </div>
       </aside>

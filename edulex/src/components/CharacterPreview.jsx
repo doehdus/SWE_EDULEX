@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { Bookmark, ShoppingBag, GraduationCap, Check } from 'lucide-react'
 import { useMajor } from '../context/MajorContext'
 import { useAuth } from '../context/AuthContext'
 import { useStarDust } from '../hooks/useStarDust'
 import { supabase } from '../utils/supabase'
+import { LIB } from '../constants/theme'
 
 const MAJORS = ['컴퓨터과학', '경영학', '역사학', '의학', '법학', '심리학']
 
@@ -52,103 +54,164 @@ export default function CharacterPreview() {
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm flex flex-col h-full overflow-hidden">
+      {/* 책 표지 형태의 캐릭터 카드 */}
+      <div
+        className="rounded-2xl flex flex-col h-full overflow-hidden relative"
+        style={{
+          background: `linear-gradient(160deg, ${LIB.wood} 0%, ${LIB.woodLight} 60%, ${LIB.woodMid} 100%)`,
+          boxShadow: '4px 4px 20px rgba(92,58,30,0.4), inset -4px 0 12px rgba(0,0,0,0.25)',
+        }}
+      >
+        {/* 책 질감 세로선 */}
+        <div className="absolute inset-0 pointer-events-none opacity-10"
+          style={{ backgroundImage: 'repeating-linear-gradient(180deg, transparent, transparent 48px, rgba(255,255,255,0.08) 48px, rgba(255,255,255,0.08) 50px)' }}
+        />
 
-        {/* 상단 행: LV(좌) + 칭호(우) */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-2">
-          <span className="bg-[#1a3a5c] text-white text-xs font-extrabold px-3 py-1 rounded-full">
+        {/* 책등 왼쪽 라인 */}
+        <div className="absolute left-0 top-0 bottom-0 w-5 rounded-l-2xl"
+          style={{ background: 'linear-gradient(90deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.1) 60%, transparent 100%)' }}
+        />
+
+        {/* 상단: LV + 칭호 */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-2 relative">
+          <span
+            className="text-xs font-extrabold px-3 py-1 rounded-full"
+            style={{ background: LIB.gold, color: LIB.ink }}
+          >
             LV. {profile?.level ?? 1}
           </span>
           <button
             onClick={() => setShowTitleModal(true)}
-            className="text-xs font-semibold text-[#0d9488] bg-[#f0fdfa] border border-[#0d9488] px-3 py-1 rounded-full hover:bg-[#0d9488] hover:text-white transition"
+            className="text-xs font-semibold px-3 py-1 rounded-full border transition hover:opacity-70"
+            style={{ color: LIB.parchment, borderColor: 'rgba(245,237,224,0.35)', background: 'rgba(245,237,224,0.12)' }}
           >
             {profile?.active_title ?? '칭호 없음'}
           </button>
         </div>
 
-        {/* 중앙: 캐릭터 (flex-1로 남은 공간 채움) */}
-        <div className="flex-1 flex items-center justify-center bg-[#f0fdfa] my-3 mx-4 rounded-xl">
-          <div className="w-36 h-36 rounded-full bg-white border-4 border-[#0d9488] shadow-xl flex items-center justify-center text-7xl">
-            🧑‍🎓
+        {/* 중앙: 캐릭터 */}
+        <div
+          className="flex-1 flex items-center justify-center my-3 mx-5 rounded-xl relative"
+          style={{ background: 'rgba(255,255,255,0.08)' }}
+        >
+          {/* 장식 테두리 */}
+          <div
+            className="absolute inset-2 rounded-xl pointer-events-none"
+            style={{ border: `1px solid ${LIB.gold}`, opacity: 0.4 }}
+          />
+          <div
+            className="w-28 h-28 rounded-full flex items-center justify-center shadow-xl"
+            style={{
+              background: LIB.parchment,
+              border: `3px solid ${LIB.gold}`,
+              boxShadow: `0 0 20px rgba(201,168,76,0.4)`,
+            }}
+          >
+            <GraduationCap size={64} strokeWidth={1.2} style={{ color: LIB.wood }} />
           </div>
         </div>
 
-        {/* 하단 그리드: 닉네임(좌상) 별가루(우상) / 전공(좌하) 상점(우하) */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-5 pb-5 pt-3">
+        {/* 하단: 닉네임, 책갈피, 전공, 상점 */}
+        <div
+          className="mx-4 mb-4 rounded-xl overflow-hidden relative"
+          style={{ background: 'rgba(0,0,0,0.28)', backdropFilter: 'blur(2px)', border: '1px solid rgba(196,168,130,0.18)' }}
+        >
+          {/* 2×2 그리드 */}
+          <div className="grid grid-cols-2">
 
-          {/* 닉네임 */}
-          <div>
-            <p className="text-[10px] text-gray-400 font-semibold mb-0.5">닉네임</p>
-            <p className="text-base font-extrabold text-[#1a3a5c] truncate">{profile?.nickname ?? '익명'}</p>
-          </div>
+            {/* 닉네임 */}
+            <div
+              className="px-4 py-3"
+              style={{ borderRight: '1px solid rgba(196,168,130,0.2)', borderBottom: '1px solid rgba(196,168,130,0.2)' }}
+            >
+              <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: LIB.shelfLine }}>닉네임</p>
+              <p className="text-sm font-extrabold truncate leading-tight" style={{ color: LIB.parchment }}>{profile?.nickname ?? '익명'}</p>
+            </div>
 
-          {/* 보유 별가루 */}
-          <div className="text-right">
-            <p className="text-[10px] text-gray-400 font-semibold mb-0.5">보유 별가루</p>
-            <p className="text-base font-extrabold text-yellow-600">⭐ {starDust ?? '—'}</p>
-          </div>
+            {/* 보유 책갈피 */}
+            <div
+              className="px-4 py-3"
+              style={{ borderBottom: '1px solid rgba(196,168,130,0.2)' }}
+            >
+              <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: LIB.shelfLine }}>보유 책갈피</p>
+              <p className="text-sm font-extrabold flex items-center gap-1 leading-tight" style={{ color: LIB.gold }}>
+                <Bookmark size={12} fill="currentColor" className="animate-float" />
+                {starDust ?? '—'}
+              </p>
+            </div>
 
-          {/* 선택 전공 */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <p className="text-[10px] text-gray-400 font-semibold">선택 전공</p>
-              <button onClick={openMajorModal} className="text-[10px] text-[#0d9488] font-bold hover:underline">
-                변경
+            {/* 선택 전공 */}
+            <div
+              className="px-4 py-3"
+              style={{ borderRight: '1px solid rgba(196,168,130,0.2)' }}
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: LIB.shelfLine }}>전공</p>
+                <button onClick={openMajorModal} className="text-xs font-bold hover:opacity-70 transition" style={{ color: LIB.shelfLine }}>
+                  변경
+                </button>
+              </div>
+              {selectedMajors.length === 0 ? (
+                <button onClick={openMajorModal} className="text-[10px] hover:opacity-70 transition" style={{ color: LIB.shelfLine }}>
+                  + 선택
+                </button>
+              ) : (
+                <div className="flex flex-row gap-1 mt-0.5 flex-wrap">
+                  {selectedMajors.map(m => (
+                    <span
+                      key={m}
+                      className="text-xs font-bold px-2 py-1 rounded-lg flex-1 text-center"
+                      style={{ background: 'rgba(201,168,76,0.2)', color: LIB.parchment, border: '1px solid rgba(201,168,76,0.35)' }}
+                    >
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 상점 */}
+            <div className="px-4 py-3 flex items-center justify-center">
+              <button
+                className="w-full text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1.5 transition hover:opacity-70"
+                style={{ background: 'rgba(245,237,224,0.12)', color: LIB.parchment, border: '1px solid rgba(245,237,224,0.25)' }}
+              >
+                <ShoppingBag size={12} strokeWidth={2} /> 상점
               </button>
             </div>
-            {selectedMajors.length === 0 ? (
-              <button
-                onClick={openMajorModal}
-                className="text-xs text-gray-400 hover:text-[#0d9488] transition"
-              >
-                + 전공 선택
-              </button>
-            ) : (
-              <div className="flex flex-col gap-1">
-                {selectedMajors.map(m => (
-                  <span key={m} className="bg-[#1a3a5c] text-white text-xs font-bold px-2.5 py-1 rounded-full w-fit">
-                    {m}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
 
-          {/* 상점 이동 */}
-          <div className="flex items-end justify-end">
-            <button className="bg-[#f0fdfa] border border-[#0d9488] text-[#0d9488] font-bold px-4 py-2 rounded-xl text-xs hover:bg-[#0d9488] hover:text-white transition">
-              🛒 상점 이동
-            </button>
           </div>
-
         </div>
       </div>
 
       {/* 칭호 선택 모달 */}
       {showTitleModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-80 shadow-xl">
-            <h3 className="text-lg font-bold text-[#1a3a5c] mb-1">칭호 선택</h3>
-            <p className="text-xs text-gray-400 mb-4">사용할 칭호를 선택하세요.</p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div
+            className="rounded-2xl p-6 w-80 shadow-2xl"
+            style={{ background: LIB.cream, border: `1px solid ${LIB.shelfLine}` }}
+          >
+            <h3 className="text-lg font-bold mb-1" style={{ color: LIB.ink }}>칭호 선택</h3>
+            <p className="text-xs mb-4" style={{ color: LIB.inkLight }}>사용할 칭호를 선택하세요.</p>
             <div className="space-y-2">
               {TITLES.map(title => (
                 <button
                   key={title}
                   onClick={() => saveTitle(title)}
-                  className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium border transition
-                    ${profile?.active_title === title
-                      ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]'
-                      : 'bg-white text-gray-700 border-gray-200 hover:border-[#0d9488] hover:text-[#0d9488]'
-                    }`}
+                  className="w-full text-left px-4 py-3 rounded-xl text-sm font-medium border transition"
+                  style={profile?.active_title === title
+                    ? { background: LIB.wood, color: LIB.parchment, borderColor: LIB.wood }
+                    : { background: 'white', color: LIB.ink, borderColor: LIB.shelfLine }
+                  }
                 >
-                  {profile?.active_title === title ? '✓ ' : ''}{title}
+                  {profile?.active_title === title && <Bookmark size={12} fill="currentColor" className="inline mr-1" style={{ color: LIB.goldLight }} />}{title}
                 </button>
               ))}
             </div>
             <button
               onClick={() => setShowTitleModal(false)}
-              className="w-full mt-4 py-2.5 text-sm text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50"
+              className="w-full mt-4 py-2.5 text-sm rounded-xl border transition hover:opacity-70"
+              style={{ color: LIB.inkLight, borderColor: LIB.shelfLine }}
             >
               취소
             </button>
@@ -158,10 +221,13 @@ export default function CharacterPreview() {
 
       {/* 전공 선택 모달 */}
       {showMajorModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-80 shadow-xl">
-            <h3 className="text-lg font-bold text-[#1a3a5c] mb-1">전공 선택</h3>
-            <p className="text-xs text-gray-400 mb-4">최대 2개까지 선택할 수 있습니다.</p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div
+            className="rounded-2xl p-6 w-80 shadow-2xl"
+            style={{ background: LIB.cream, border: `1px solid ${LIB.shelfLine}` }}
+          >
+            <h3 className="text-lg font-bold mb-1" style={{ color: LIB.ink }}>전공 선택</h3>
+            <p className="text-xs mb-4" style={{ color: LIB.inkLight }}>최대 2개까지 선택할 수 있습니다.</p>
             <div className="space-y-2">
               {MAJORS.map(major => {
                 const selected = tempMajors.includes(major)
@@ -171,15 +237,15 @@ export default function CharacterPreview() {
                     key={major}
                     onClick={() => toggleMajor(major)}
                     disabled={disabled}
-                    className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium border transition
-                      ${selected
-                        ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]'
-                        : disabled
-                          ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
-                          : 'bg-white text-gray-700 border-gray-200 hover:border-[#0d9488]'
-                      }`}
+                    className="w-full text-left px-4 py-3 rounded-xl text-sm font-medium border transition"
+                    style={selected
+                      ? { background: LIB.wood, color: LIB.parchment, borderColor: LIB.wood }
+                      : disabled
+                        ? { background: '#f5f5f5', color: '#ccc', borderColor: '#eee', cursor: 'not-allowed' }
+                        : { background: 'white', color: LIB.ink, borderColor: LIB.shelfLine }
+                    }
                   >
-                    {selected ? '✓ ' : ''}{major}
+                    {selected && <Check size={13} strokeWidth={2.5} className="inline mr-1" />}{major}
                   </button>
                 )
               })}
@@ -187,13 +253,15 @@ export default function CharacterPreview() {
             <div className="flex gap-2 mt-5">
               <button
                 onClick={() => setShowMajorModal(false)}
-                className="flex-1 py-2.5 text-sm text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50"
+                className="flex-1 py-2.5 text-sm rounded-xl border transition hover:opacity-70"
+                style={{ color: LIB.inkLight, borderColor: LIB.shelfLine }}
               >
                 취소
               </button>
               <button
                 onClick={saveMajors}
-                className="flex-1 py-2.5 text-sm text-white bg-[#1a3a5c] rounded-xl hover:bg-[#0d9488]"
+                className="flex-1 py-2.5 text-sm rounded-xl font-bold transition hover:opacity-80"
+                style={{ background: LIB.wood, color: LIB.parchment }}
               >
                 저장
               </button>
