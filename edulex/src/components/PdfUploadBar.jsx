@@ -1,256 +1,284 @@
 import { useRef, useState } from 'react'
-import { Loader2, CheckCircle2, AlertCircle, Plus } from 'lucide-react'
 import { supabase } from '../utils/supabase'
-import { useAuth } from '../context/AuthContext'
-import { LIB, BOOK_COLORS } from '../constants/theme'
+import * as pdfjsLib from 'pdfjs-dist'
+import * as XLSX from 'xlsx'
 
-// 이미 꽂혀있는 책 슬롯
-function BookSlot({ index, filled, color }) {
-  if (filled) {
-    return (
-      <div
-        className="relative flex flex-col rounded-sm overflow-hidden"
-        style={{
-          width: 48,
-          height: 80,
-          background: `linear-gradient(180deg, ${color.cover} 0%, ${color.spine} 100%)`,
-          boxShadow: 'inset -3px 0 6px rgba(0,0,0,0.25), 2px 2px 6px rgba(0,0,0,0.15)',
-        }}
-      >
-        {/* 책 상단 하이라이트 */}
-        <div className="h-1.5 w-full" style={{ background: color.accent, opacity: 0.6 }} />
-        {/* 책 질감 줄 */}
-        <div
-          className="flex-1"
-          style={{
-            backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 7px, rgba(255,255,255,0.07) 7px, rgba(255,255,255,0.07) 8px)',
-          }}
-        />
-        {/* 책 번호 */}
-        <div
-          className="absolute bottom-2 left-0 right-0 flex justify-center"
-          style={{ color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 700 }}
-        >
-          {index + 1}
-        </div>
-      </div>
-    )
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).href
+
+// 브라우저에서 PDF 텍스트 추출 (최대 20페이지, 15000자)
+async function extractTextFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  const maxPages = Math.min(pdf.numPages, 20)
+  let text = ''
+  for (let i = 1; i <= maxPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    text += content.items.map(item => item.str).join(' ') + '\n'
+    if (text.length >= 15000) break
+  }
+  return text.slice(0, 15000)
+}
+
+// 단어 목록으로 Excel 파일 생성 후 다운로드
+function downloadExcel(words) {
+  const data = words.map(w => ({
+    '영어 단어': w.english,
+    '일반 뜻': w.general_meaning ?? '',
+    '전공 뜻': w.major_meaning ?? '',
+  }))
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, '단어 목록')
+  XLSX.writeFile(wb, 'wordbook.xlsx')
+}
+
+// Excel 파일에서 단어 목록 파싱
+async function readWordsFromExcel(file) {
+  const arrayBuffer = await file.arrayBuffer()
+  const wb = XLSX.read(arrayBuffer)
+  const ws = wb.Sheets[wb.SheetNames[0]]
+  const rows = XLSX.utils.sheet_to_json(ws)
+
+  if (!rows.length || !('영어 단어' in rows[0]) || !('전공 뜻' in rows[0])) {
+    throw new Error("올바른 형식이 아닙니다. '영어 단어', '일반 뜻', '전공 뜻' 컬럼이 필요합니다.")
   }
 
-  return (
-    <div
-      className="relative flex flex-col items-center justify-center rounded-sm"
-      style={{
-        width: 48,
-        height: 80,
-        background: 'rgba(0,0,0,0.08)',
-        border: '2px dashed rgba(0,0,0,0.12)',
-      }}
-    >
-      <span style={{ color: 'rgba(0,0,0,0.2)', fontSize: 10, fontWeight: 700 }}>{index + 1}</span>
-    </div>
+  return rows
+    .map(row => ({
+      english: row['영어 단어'],
+      general_meaning: row['일반 뜻'] || '',
+      major_meaning: row['전공 뜻'],
+    }))
+    .filter(w => w.english && w.major_meaning)
+}
+
+async function callEdge(endpoint, body) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${endpoint}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    }
   )
+  if (!response.ok) {
+    const err = await response.json()
+    throw new Error(err.message || '요청에 실패했습니다.')
+  }
+  return response.json()
 }
 
 export default function PdfUploadBar({ onComplete, wordbookCount }) {
-  const { user } = useAuth()
-  const inputRef = useRef()
-  const [status, setStatus] = useState('idle') // idle | uploading | processing | done | error
-  const [errorMsg, setErrorMsg] = useState('')
-  const [dragOver, setDragOver] = useState(false)
+  const pdfInputRef = useRef()
+  const xlsInputRef = useRef()
 
-  const isDisabled = wordbookCount >= 2
+  const [pdfStatus, setPdfStatus] = useState('idle') // idle | extracting | done | error
+  const [pdfError, setPdfError] = useState('')
+  const [extractedWords, setExtractedWords] = useState(null)
 
-  const processFile = async (file) => {
+  const [xlsStatus, setXlsStatus] = useState('idle') // idle | generating | done | error
+  const [xlsError, setXlsError] = useState('')
+  const [xlsInfo, setXlsInfo] = useState('')
+
+  const [title, setTitle] = useState('')
+  const [titleError, setTitleError] = useState('')
+
+  const isXlsDisabled = wordbookCount >= 2
+
+  // Button 1: PDF → 텍스트 추출(브라우저) → Edge(TF-IDF + Groq) → Excel 다운로드
+  const handlePdfUpload = async (e) => {
+    const file = e.target.files[0]
     if (!file) return
+    pdfInputRef.current.value = ''
+
     if (file.type !== 'application/pdf') {
-      setStatus('error')
-      setErrorMsg('PDF 파일만 업로드 가능합니다.')
+      setPdfStatus('error')
+      setPdfError('PDF 파일만 업로드 가능합니다.')
       return
     }
 
-    setStatus('uploading')
-    setErrorMsg('')
-
-    const { count } = await supabase
-      .from('user_wordbooks')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-
-    if (count >= 2) {
-      setStatus('error')
-      setErrorMsg('단어장은 최대 2개까지만 생성할 수 있습니다.')
-      return
-    }
-
-    const formData = new FormData()
-    formData.append('pdf', file)
-    formData.append('userId', user.id)
+    setPdfStatus('extracting')
+    setPdfError('')
 
     try {
-      setStatus('processing')
-      const { data: { session } } = await supabase.auth.getSession()
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-wordbook-from-pdf`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${session.access_token}` },
-          body: formData,
-        }
-      )
+      const text = await extractTextFromPDF(file)
+      if (!text.trim()) throw new Error('텍스트를 추출할 수 없습니다. 스캔(이미지) PDF는 지원되지 않습니다.')
 
-      if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.message || '단어장 생성에 실패했습니다.')
-      }
-
-      setStatus('done')
-      onComplete?.()
+      const data = await callEdge('extract-words-from-pdf', { text })
+      setExtractedWords(data.words)
+      setPdfStatus('done')
     } catch (err) {
-      setStatus('error')
-      setErrorMsg(err.message)
-    } finally {
-      if (inputRef.current) inputRef.current.value = ''
+      setPdfStatus('error')
+      setPdfError(err.message)
     }
   }
 
-  const handleFileChange = (e) => processFile(e.target.files[0])
+  // Button 2: Excel 파싱(브라우저) → Edge(중복 제거 + Groq 예문 + DB 저장)
+  const handleExcelUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    xlsInputRef.current.value = ''
 
-  const handleDrop = (e) => {
-    e.preventDefault()
-    setDragOver(false)
-    if (isDisabled) return
-    processFile(e.dataTransfer.files[0])
+    if (!title.trim()) {
+      setTitleError('단어장 제목을 입력해주세요.')
+      return
+    }
+    setTitleError('')
+    setXlsStatus('generating')
+    setXlsError('')
+    setXlsInfo('')
+
+    try {
+      const words = await readWordsFromExcel(file)
+      if (words.length === 0) throw new Error('단어를 찾을 수 없습니다. 파일 형식을 확인해주세요.')
+
+      const result = await callEdge('create-wordbook-from-excel', { title: title.trim(), words })
+      setXlsStatus('done')
+      setTitle('')
+      if (result.skipped_count > 0) {
+        setXlsInfo(`${result.skipped_count}개의 중복 단어는 건너뛰었습니다.`)
+      }
+      onComplete?.()
+    } catch (err) {
+      setXlsStatus('error')
+      setXlsError(err.message)
+    }
   }
 
-  const handleDragOver = (e) => { e.preventDefault(); if (!isDisabled) setDragOver(true) }
-  const handleDragLeave = () => setDragOver(false)
-
-  const slotColors = [BOOK_COLORS[4], BOOK_COLORS[0]] // 빨강, 보라
-
-  const isActive = status === 'uploading' || status === 'processing'
-
   return (
-    <div
-      className="w-full rounded-xl overflow-hidden transition-all duration-200"
-      style={{
-        background: dragOver
-          ? `linear-gradient(135deg, ${LIB.parchmentDark} 0%, ${LIB.parchment} 100%)`
-          : LIB.cream,
-        border: `1.5px solid ${dragOver ? LIB.gold : LIB.shelfLine}`,
-        boxShadow: dragOver ? `0 0 0 3px ${LIB.gold}33` : 'none',
-      }}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-    >
-      {/* 서가 상단 선반 */}
-      <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${LIB.wood}, ${LIB.woodLight})` }} />
+    <div className="w-full flex flex-col gap-3">
+      <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={handlePdfUpload} />
+      <input ref={xlsInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleExcelUpload} />
 
-      <div className="px-5 py-4 flex items-center gap-5">
+      {/* Button 1: PDF → Excel */}
+      <div className="border-2 border-dashed border-[#7c3aed] rounded-xl p-4 bg-purple-50">
+        <p className="text-xs font-bold text-[#7c3aed] mb-1">1단계 — 단어 추출</p>
+        <p className="text-xs text-gray-400 mb-3">⚠ 스캔(이미지) PDF는 지원되지 않습니다. 텍스트 선택이 되는 PDF만 가능합니다.</p>
 
-        {/* 책 슬롯 2개 */}
-        <div
-          className="flex items-end gap-1.5 px-3 pt-2 pb-1 rounded-lg shrink-0 relative"
-          style={{ background: 'rgba(0,0,0,0.05)' }}
-        >
-          {[0, 1].map(i => (
-            <BookSlot
-              key={i}
-              index={i}
-              filled={i < wordbookCount}
-              color={slotColors[i]}
-            />
-          ))}
-          {/* 선반 바닥 */}
-          <div
-            className="absolute bottom-0 left-0 right-0 h-1 rounded-b-lg"
-            style={{ background: LIB.woodMid }}
-          />
-        </div>
+        {pdfStatus === 'idle' && (
+          <button
+            onClick={() => pdfInputRef.current?.click()}
+            className="w-full py-2 text-xs font-medium bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition"
+          >
+            📄 PDF 업로드
+          </button>
+        )}
 
-        {/* 우측 텍스트 + 버튼 */}
-        <div className="flex-1 min-w-0">
-          {status === 'idle' && (
-            <>
-              <p className="text-xs font-bold mb-0.5" style={{ color: LIB.inkMid }}>
-                {isDisabled ? '서가가 가득 찼습니다 (최대 2권)' : `서가 공간 ${2 - wordbookCount}칸 남음`}
-              </p>
-              <p className="text-[11px] mb-3" style={{ color: LIB.inkLight }}>
-                {isDisabled ? '기존 단어장을 삭제하면 새로 추가할 수 있습니다.' : 'PDF를 업로드하면 AI가 핵심 단어를 추출해 서가에 꽂아드립니다.'}
-              </p>
-              {!isDisabled && (
-                <button
-                  onClick={() => inputRef.current?.click()}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all hover:opacity-80"
-                  style={{
-                    background: `linear-gradient(135deg, ${LIB.wood} 0%, ${LIB.woodLight} 100%)`,
-                    color: LIB.parchment,
-                    boxShadow: '0 2px 8px rgba(92,58,30,0.3)',
-                  }}
-                >
-                  <Plus size={13} strokeWidth={2.5} /> PDF 업로드
-                </button>
-              )}
-            </>
-          )}
+        {pdfStatus === 'extracting' && (
+          <div className="text-center text-xs text-[#7c3aed] py-2">
+            <span className="animate-pulse mr-1">✨</span> AI가 핵심 단어를 추출하고 있습니다...
+          </div>
+        )}
 
-          {isActive && (
-            <div className="flex items-center gap-2" style={{ color: LIB.woodLight }}>
-              <Loader2 size={16} strokeWidth={2} className="animate-spin shrink-0" />
-              <div>
-                <p className="text-xs font-bold" style={{ color: LIB.ink }}>
-                  {status === 'uploading' ? '파일 업로드 중...' : 'AI가 단어를 추출하는 중...'}
-                </p>
-                <p className="text-[11px]" style={{ color: LIB.inkLight }}>
-                  {status === 'processing' ? '잠시만 기다려주세요 (30초~1분 소요)' : ''}
-                </p>
-              </div>
+        {pdfStatus === 'done' && extractedWords && (
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <span className="text-xs text-green-600 font-medium">✅ {extractedWords.length}개 추출 완료</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => downloadExcel(extractedWords)}
+                className="px-3 py-1.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+              >
+                📥 Excel 다운로드
+              </button>
+              <button
+                onClick={() => { setPdfStatus('idle'); setPdfError(''); setExtractedWords(null) }}
+                className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 underline"
+              >
+                다시 추출
+              </button>
             </div>
-          )}
+          </div>
+        )}
 
-          {status === 'done' && (
-            <div className="flex items-center gap-2">
-              <CheckCircle2 size={18} strokeWidth={2} style={{ color: '#16a34a' }} className="shrink-0" />
-              <div>
-                <p className="text-xs font-bold" style={{ color: '#16a34a' }}>서가에 꽂혔습니다!</p>
-                <button
-                  onClick={() => setStatus('idle')}
-                  className="text-[11px] underline mt-0.5"
-                  style={{ color: LIB.inkLight }}
-                >
-                  다시 업로드
-                </button>
-              </div>
-            </div>
-          )}
-
-          {status === 'error' && (
-            <div className="flex items-start gap-2">
-              <AlertCircle size={16} strokeWidth={2} style={{ color: '#dc2626' }} className="shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold" style={{ color: '#dc2626' }}>{errorMsg}</p>
-                <button
-                  onClick={() => setStatus('idle')}
-                  className="text-[11px] underline mt-0.5"
-                  style={{ color: LIB.inkLight }}
-                >
-                  다시 시도
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        {pdfStatus === 'error' && (
+          <div>
+            <div className="text-xs text-red-500 mb-2">{pdfError}</div>
+            <button
+              onClick={() => { setPdfStatus('idle'); setPdfError('') }}
+              className="text-xs text-gray-400 hover:text-gray-600 underline"
+            >
+              다시 시도
+            </button>
+          </div>
+        )}
       </div>
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".pdf"
-        className="hidden"
-        onChange={handleFileChange}
-        disabled={isDisabled}
-      />
+      {/* Button 2: Excel → 단어장 */}
+      <div className={`border-2 border-dashed rounded-xl p-4 transition
+        ${isXlsDisabled ? 'border-gray-200 bg-gray-50 opacity-60' : 'border-indigo-400 bg-indigo-50'}`}
+      >
+        <p className="text-xs font-bold text-indigo-600 mb-1">2단계 — 예문 생성 및 단어장 저장</p>
+        <p className="text-xs text-gray-400 mb-1">
+          필수 컬럼: <span className="font-medium text-gray-500">'영어 단어'</span>, <span className="font-medium text-gray-500">'일반 뜻'</span>, <span className="font-medium text-gray-500">'전공 뜻'</span>
+        </p>
+        <p className="text-xs text-gray-400 mb-3">⚠ 단어장은 최대 2개까지 생성 가능합니다.</p>
+
+        {!isXlsDisabled && xlsStatus === 'idle' && (
+          <div className="mb-2">
+            <input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="단어장 제목 입력 (예: 컴퓨터과학 핵심어)"
+              maxLength={50}
+              className={`w-full text-xs border rounded-lg px-3 py-2 outline-none bg-white mb-1
+                ${titleError ? 'border-red-400' : 'border-gray-200 focus:border-indigo-400'}`}
+            />
+            {titleError && <p className="text-xs text-red-500">{titleError}</p>}
+          </div>
+        )}
+
+        {xlsStatus === 'idle' && (
+          <button
+            onClick={() => !isXlsDisabled && xlsInputRef.current?.click()}
+            disabled={isXlsDisabled}
+            className={`w-full py-2 text-xs font-medium rounded-lg transition
+              ${isXlsDisabled
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+          >
+            {isXlsDisabled ? '단어장 최대 2개 보유 중 (생성 불가)' : '📊 Excel 업로드'}
+          </button>
+        )}
+
+        {xlsStatus === 'generating' && (
+          <div className="text-center text-xs text-indigo-600 py-2">
+            <span className="animate-pulse mr-1">✨</span> AI가 예문을 생성하고 있습니다...
+          </div>
+        )}
+
+        {xlsStatus === 'done' && (
+          <div>
+            <div className="text-xs text-green-600 font-medium mb-1">✅ 단어장이 생성되었습니다!</div>
+            {xlsInfo && <div className="text-xs text-amber-500 mb-2">{xlsInfo}</div>}
+            <button
+              onClick={() => { setXlsStatus('idle'); setXlsError(''); setXlsInfo('') }}
+              className="text-xs text-gray-400 hover:text-gray-600 underline"
+            >
+              다시 생성
+            </button>
+          </div>
+        )}
+
+        {xlsStatus === 'error' && (
+          <div>
+            <div className="text-xs text-red-500 mb-2">{xlsError}</div>
+            <button
+              onClick={() => { setXlsStatus('idle'); setXlsError('') }}
+              className="text-xs text-gray-400 hover:text-gray-600 underline"
+            >
+              다시 시도
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

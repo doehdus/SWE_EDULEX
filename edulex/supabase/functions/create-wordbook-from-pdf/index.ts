@@ -218,7 +218,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${groqApiKey}`,
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'llama-3.1-8b-instant',
         max_tokens: 4096,
         temperature: 0.3,
         response_format: { type: 'json_object' },

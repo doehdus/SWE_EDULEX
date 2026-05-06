@@ -1,4 +1,10 @@
-project_id = "wuneastyskjxrbsefert"
+project_id = "jiprhynqysjkbrhnstkt"
 
 [functions.create-wordbook-from-pdf]
+verify_jwt = false
+
+[functions.extract-words-from-pdf]
+verify_jwt = false
+
+[functions.create-wordbook-from-excel]
 verify_jwt = false
