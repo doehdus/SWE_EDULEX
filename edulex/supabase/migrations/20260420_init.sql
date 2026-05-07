@@ -14,7 +14,7 @@ create table if not exists public.users (
   role text not null default 'user',
   major text[] default '{}',
   active_title text,
-  star_dust integer not null default 0,
+  bookmark integer not null default 0,
   level integer not null default 1,
   created_at timestamptz default now()
 );
@@ -128,7 +128,7 @@ begin
   returning id into v_attendance_id;
 
   update public.users
-  set star_dust = star_dust + 10
+  set bookmark = bookmark + 10
   where id = p_user_id;
 
   insert into public.bookmark_logs(user_id, change_amount, reason, ref_id)
@@ -175,7 +175,7 @@ begin
   v_reward := greatest(5, p_correct * 2);
 
   update public.users
-  set star_dust = star_dust + v_reward
+  set bookmark = bookmark + v_reward
   where id = p_user_id;
 
   insert into public.bookmark_logs(user_id, change_amount, reason, ref_id)

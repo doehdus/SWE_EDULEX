@@ -57,7 +57,7 @@ export default function SignupPage() {
         nickname,
         major: null,
         active_title: null,
-        star_dust: 0,
+        bookmark: 0,
         level: 1,
       })
     }

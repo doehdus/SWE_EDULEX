@@ -12,12 +12,12 @@ export function useBookmark() {
     // 초기값 로드
     supabase
       .from('users')
-      .select('star_dust')
+      .select('bookmark')
       .eq('id', user.id)
       .single()
-      .then(({ data }) => setBookmark(data?.star_dust ?? 0))
+      .then(({ data }) => setBookmark(data?.bookmark ?? 0))
 
-    // Supabase Realtime 구독 — 책갈피(star_dust) 변경 실시간 반영 (SBI-H05)
+    // Supabase Realtime 구독 — 책갈피 변경 실시간 반영 (SBI-H05)
     const channel = supabase
       .channel(`star-dust-${user.id}`)
       .on(
@@ -29,7 +29,7 @@ export function useBookmark() {
           filter: `id=eq.${user.id}`,
         },
         (payload) => {
-          setBookmark(payload.new.star_dust)
+          setBookmark(payload.new.bookmark)
         }
       )
       .subscribe()

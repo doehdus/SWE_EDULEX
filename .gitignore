@@ -1,4 +1,5 @@
-.claude/
+desktop.ini
+.claude/settings.local.json
 edulex/.env.local
 edulex/node_modules/
 edulex/dist/

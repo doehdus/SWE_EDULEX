@@ -256,7 +256,7 @@ backlogs/
 - [ ] U04 학습 진행률 계산 확인 (word_progress 테이블 is_completed 기준)
 - [x] 관리자 권한 분리 보안 테스트 (AdminRoute role !== 'admin' 시 리다이렉트)
 - [ ] RLS 정책 전체 확인 (각 테이블별 본인 데이터만 접근 가능한지 — Supabase 콘솔 확인 필요)
-- [x] 책갈피 Realtime 동기화 확인 (useBookmark hook — star_dust 컬럼 UPDATE 이벤트 구독)
+- [x] 책갈피 Realtime 동기화 확인 (useBookmark hook — bookmark 컬럼 UPDATE 이벤트 구독)
 
 ---
 
@@ -268,7 +268,7 @@ backlogs/
 
 | 테이블 | 설명 |
 |--------|------|
-| `users` | 사용자 정보 (닉네임, major, active_title, star_dust, level) |
+| `users` | 사용자 정보 (닉네임, major, active_title, bookmark, level) |
 | `official_wordbooks` | 공식 단어장 |
 | `official_words` | 공식 단어 (영어, 일반뜻, 전공뜻, 일반예문, 전공예문) |
 | `user_wordbooks` | 나만의 단어장 (최대 2개) |
