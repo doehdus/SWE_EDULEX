@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Bookmark, ShoppingBag, GraduationCap, Check } from 'lucide-react'
 import { useMajor } from '../context/MajorContext'
 import { useAuth } from '../context/AuthContext'
-import { useStarDust } from '../hooks/useStarDust'
+import { useBookmark } from '../hooks/useBookmark'
 import { supabase } from '../utils/supabase'
 import { LIB } from '../constants/theme'
 
@@ -23,7 +23,7 @@ const TITLES = [
 export default function CharacterPreview() {
   const { profile } = useAuth()
   const { selectedMajors, updateMajors } = useMajor()
-  const starDust = useStarDust()
+  const bookmark = useBookmark()
   const [showMajorModal, setShowMajorModal] = useState(false)
   const [showTitleModal, setShowTitleModal] = useState(false)
   const [tempMajors, setTempMajors] = useState([])
@@ -136,7 +136,7 @@ export default function CharacterPreview() {
               <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: LIB.shelfLine }}>보유 책갈피</p>
               <p className="text-sm font-extrabold flex items-center gap-1 leading-tight" style={{ color: LIB.gold }}>
                 <Bookmark size={12} fill="currentColor" className="animate-float" />
-                {starDust ?? '—'}
+                {bookmark ?? '—'}
               </p>
             </div>
 

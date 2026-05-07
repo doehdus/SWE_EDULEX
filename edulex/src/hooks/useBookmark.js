@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
 
-export function useStarDust() {
+export function useBookmark() {
   const { user } = useAuth()
-  const [starDust, setStarDust] = useState(null)
+  const [bookmark, setBookmark] = useState(null)
 
   useEffect(() => {
     if (!user) return
@@ -15,9 +15,9 @@ export function useStarDust() {
       .select('star_dust')
       .eq('id', user.id)
       .single()
-      .then(({ data }) => setStarDust(data?.star_dust ?? 0))
+      .then(({ data }) => setBookmark(data?.star_dust ?? 0))
 
-    // Supabase Realtime 구독 — star_dust 변경 실시간 반영 (SBI-H05)
+    // Supabase Realtime 구독 — 책갈피(star_dust) 변경 실시간 반영 (SBI-H05)
     const channel = supabase
       .channel(`star-dust-${user.id}`)
       .on(
@@ -29,7 +29,7 @@ export function useStarDust() {
           filter: `id=eq.${user.id}`,
         },
         (payload) => {
-          setStarDust(payload.new.star_dust)
+          setBookmark(payload.new.star_dust)
         }
       )
       .subscribe()
@@ -37,5 +37,5 @@ export function useStarDust() {
     return () => supabase.removeChannel(channel)
   }, [user])
 
-  return starDust
+  return bookmark
 }

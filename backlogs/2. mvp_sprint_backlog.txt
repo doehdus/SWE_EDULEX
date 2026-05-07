@@ -2,7 +2,7 @@
 MVP Sprint Backlog
 EduLex - 전공 어휘 학습 웹 플랫폼
 ================================================================
-버전 : v2.0 (2026-05-04)
+버전 : v2.1 (2026-05-07)
 변경 이력:
   v1.0  최초 작성
   v1.1  기술스택 명시, PDF→AI 단어장 GEMINI → OpenAI API 변경
@@ -40,34 +40,25 @@ EduLex - 전공 어휘 학습 웹 플랫폼
         - CORS 헤더 보완 (x-client-info, apikey 추가, 모든 응답에 Content-Type 명시)
         - Gemini 모델 404 → gemini-1.5-flash에서 gemini-2.0-flash로 교체
         - 통합 테스트 체크리스트 E2E 항목 수정 (OpenAI → Gemini)
-  v1.9  진행 상황 업데이트 (2026-05-02) — 코드 기준 구현 완료 항목 체크리스트 반영
-        - [SBI-L00] FE 전 항목 완료 (단, /landing 경로로 라우팅 — 미로그인 리다이렉트 동작)
-        - [SBI-L01] 전 항목 완료
-        - [SBI-L02] 전 항목 완료 (OAuth Google, role 기반 라우팅 포함)
-        - [SBI-L05] 전 항목 완료 (AdminLoginPage 분리, AdminRoute 가드 포함)
-        - [SBI-H01] 전 항목 완료 (MajorContext 연동, 칭호 모달, 상점 버튼)
-        - [SBI-H02] 전 항목 완료 (check_attendance RPC, Realtime책갈피 연동)
-        - [SBI-H04] FE 완료, BE Edge Function 완료
-                    ※ 미해결: Gemini API 키 할당량 소진 → 새 키 발급 후 secrets set 필요
-        - [SBI-H05] 전 항목 완료 (useStarDust hook, Supabase Realtime 구독)
-        - [SBI-N01] 전 항목 완료 (general_meaning optional 표시, MajorContext 연동)
-        - [SBI-N02] 전 항목 완료 (삭제 모달, 2개 제한 FE 비활성화)
-        - [SBI-N03] 전 항목 완료 (save_quiz_result RPC, 보상 지급 표시)
-        - [SBI-U04] 전 항목 완료 (word_progress 테이블 기반 진행률 계산)
-        - [SBI-A01] 전 항목 완료 (단어장+단어 CRUD, ComingSoon 플레이스홀더로 A02~A06 구조 포함)
   v2.0  [SBI-H04] PDF 처리 방식 전면 재설계 반영 (2026-05-04)
         - Gemini API 키 소진 문제로 AI API 전환: Gemini 2.0 Flash → Groq API (llama-3.3-70b-versatile)
         - PDF 처리: Gemini multimodal inline_data 방식 완전 제거
           → 순수 JS PDF 텍스트 파서 (BT/ET 블록 파싱) + TF-IDF 핵심 단어 추출 + Groq API 3단계 파이프라인으로 전환
         - base64 청크 인코딩 로직 제거 (이미지 전송 불필요)
-        - GROQ_API_KEY Supabase Secrets 등록 필요 (GEMINI_API_KEY 대체)
+        - GROQ_API_KEY Supabase Secrets 등록 완료 (GEMINI_API_KEY 대체)
         - 스캔 이미지 PDF 미지원 명시 (텍스트 레이어 있는 PDF만 처리 가능)
         - 기술스택 AI 항목 업데이트: Gemini → Groq (llama-3.3-70b-versatile) + TF-IDF
+  v2.1  코드 기준 전면 재검토 및 업데이트 (2026-05-07)
+        - [SBI-H03] 최근 단어장/테스트 요약 항목 신규 추가 (코드에 구현됨 — useMainPage.js)
+          → MainPage의 RecentCards 컴포넌트: 최근 단어장(user_wordbooks), 최근 퀴즈(quiz_results) 표시
+        - [SBI-N03] 테이블명 오기 수정: test_results → quiz_results (코드 기준)
+        - 통합 테스트 체크리스트 오기 수정: test_results → quiz_results
+        - [SBI-H03] 전 항목 완료 체크 반영
 ================================================================
 Sprint 기간 : 1주 (병렬 개발 — 팀A: FE1+BE1 / 팀B: FE1+BE1)
-MVP 선택    : High 전부 + Medium 일부 (총 13개 PBI)
+MVP 선택    : High 전부 + Medium 일부 (총 14개 PBI)
              High   : L00, L01, L02, L05, A01, H04, H05, N01, N02, N03
-             Medium : H01, H02, U04
+             Medium : H01, H02, H03, U04
              ※ U05 최근 테스트 기록 및 오답 노트 → MVP 제외
 기술스택    : React, Tailwind CSS, Supabase, Figma
              AI - PDF→단어장 추출: 순수 JS PDF 텍스트 파서 + TF-IDF + Groq API (llama-3.3-70b-versatile)
@@ -178,6 +169,21 @@ MVP 선택    : High 전부 + Medium 일부 (총 13개 PBI)
     [x] BE - 스트릭 계산 로직 (FE에서 attendance 테이블 조회 후 연속 날짜 카운트)
 - 우선순위: Medium
 
+[SBI-H03] 최근 단어장 / 최근 테스트 요약
+- User Story:
+    As a 로그인한 사용자,
+    I want to 메인 화면에서 최근에 이용한 단어장과 테스트 기록을 빠르게 확인하고 싶다,
+    So that 이전 학습을 이어서 진행하거나 테스트에 바로 재도전할 수 있다.
+- 세부 작업:
+    [x] FE - 최근 단어장 카드 UI (user_wordbooks 최근 수정 기준 1건, /wordbook/my 링크)
+    [x] FE - 최근 테스트 카드 UI (quiz_results 최근 1건 점수 표시, /quiz 링크)
+    [x] FE - 단어장/테스트 없을 때 "아직 없어요" 빈 상태 처리
+    [x] BE - 최근 단어장 조회 (user_wordbooks .order('updated_at', desc).limit(1))
+    [x] BE - 최근 퀴즈 결과 조회 (quiz_results .order('created_at', desc).limit(1))
+- 우선순위: Medium
+- ※ v2.1 신규 추가: useMainPage.js의 fetchRecent() 함수 및 MainPage.jsx RecentCards 컴포넌트로 구현됨
+
+
 [SBI-H04] PDF → AI 단어장 생성 바
 - User Story:
     As a 로그인한 사용자,
@@ -192,7 +198,7 @@ MVP 선택    : High 전부 + Medium 일부 (총 13개 PBI)
     [x] BE - 2단계: TF-IDF 핵심 단어 추출 (문장 단위 mini-document, 상위 50개 선별) — 로컬, API 없음
              ※ STOP_WORDS 불용어 필터 + 영문자 3~20자 품사 필터 적용
     [x] BE - 3단계: Groq API (llama-3.3-70b-versatile) 연동 — TF-IDF 선별 단어 목록만 전달, 최대 30단어 단어장 JSON 생성
-             ※ GROQ_API_KEY Supabase Secrets 등록 필요, --no-verify-jwt 배포
+             ※ GROQ_API_KEY Supabase Secrets 등록 완료, --no-verify-jwt 배포
              ※ JWT 인증: Edge Gateway 검증 비활성화 → 함수 내 /auth/v1/user REST API로 직접 검증
              ※ response_format: json_object 강제 (구조화된 JSON 응답 보장)
     [x] BE - 추출 단어 → 나만의 단어장 자동 생성 저장 (user_wordbooks + user_words INSERT)
@@ -265,7 +271,7 @@ MVP 선택    : High 전부 + Medium 일부 (총 13개 PBI)
     [x] FE - Lv1 UI: 뜻→영어 4지선다 객관식 (진행 바, 정답/오답 시각 피드백)
     [x] FE - 테스트 결과 화면 (점수, 정답 수 표시, 책갈피 보상 지급 완료 메시지)
     [x] BE - Lv1 문제 생성 로직 (FE buildQuestions 함수 — 최대 10문제, 4지선다 shuffle)
-    [x] BE - 테스트 결과 저장 API (save_quiz_result RPC 호출 — p_wordbook_type, p_wordbook_id 포함)
+    [x] BE - 테스트 결과 저장 API (save_quiz_result RPC 호출 → quiz_results 테이블 — p_wordbook_type, p_wordbook_id 포함)
              ※ wordbook_type에 따른 서버 검증은 save_quiz_result DB 함수 내부에서 처리
     [x] BE - 테스트 참여 보상(책갈피) 지급 로직 (save_quiz_result RPC 내 트랜잭션 처리)
 - 우선순위: High
@@ -314,7 +320,7 @@ MVP 선택    : High 전부 + Medium 일부 (총 13개 PBI)
 팀 분배 (병렬 개발 — 팀A / 팀B)
 ================================================================
 ※ v1.5 재분배: 개발 순서 의존성 및 난이도 균형을 고려하여 H04↔N01 교환
-  - H04(PDF→AI)를 팀A로 이동: OpenAI 외부 API는 인증 기반 위의 독립 작업
+  - H04(PDF→AI)를 팀A로 이동: Groq 외부 API는 인증 기반 위의 독립 작업
   - N01(공식 단어장 조회)을 팀B로 이동: H01 전공 선택과 전역 상태 공유 → 같은 팀이 담당해야 연동 충돌 없음
 
 팀A (FE1 + BE1) — 기반 인프라 + 외부 API:
@@ -326,7 +332,7 @@ MVP 선택    : High 전부 + Medium 일부 (총 13개 PBI)
   SBI-L05  관리자 로그인 및 권한 부여
   3단계
   SBI-A01  공식 단어장 CRUD                  ← 팀B N01이 이 데이터를 조회
-  SBI-H04  PDF → AI 단어장 생성 바  ★팀A로 이동  ← OpenAI API 연동 전담
+  SBI-H04  PDF → AI 단어장 생성 바  ★팀A로 이동  ← Groq API 연동 전담
   4단계
   SBI-H05  책갈피 실시간 조회
 
@@ -335,6 +341,7 @@ MVP 선택    : High 전부 + Medium 일부 (총 13개 PBI)
   SBI-H01  캐릭터 프리뷰 + 전공 선택 + 칭호 선택
   2단계
   SBI-H02  출석 체크 / 스트릭
+  SBI-H03  최근 단어장 / 최근 테스트 요약
   SBI-N01  공식 단어장 조회  ★팀B로 이동        ← H01 전공 상태와 동일 팀 관리
   3단계  ※ 팀A H04 완료 후 단어 데이터 연동
   SBI-N02  나만의 단어장 조회
@@ -347,16 +354,23 @@ MVP 선택    : High 전부 + Medium 일부 (총 13개 PBI)
 ================================================================
 ※ 구현 완료 항목은 [x], 미확인/미완료 항목은 [ ] 표시
   [x] 팀A ↔ 팀B API 연동 확인 (AuthContext 공유, MajorContext 전역 상태)
+  [x] 랜딩 페이지 라우팅 확인 (미로그인 시 /landing 리다이렉트, 로그인 상태에서 /landing 접근 시 / 이동)
   [x] H01 전공 선택 → N01 공식 단어장 자동 갱신 연동 확인 (MajorContext useEffect)
+  [x] H03 최근 단어장/최근 테스트 요약 표시 확인 (fetchRecent — user_wordbooks, quiz_results 조회)
   [x] 책갈피 지급 흐름 전체 테스트 (출석 체크 → check_attendance RPC → H05 Realtime 반영)
-  [ ] star_dust_logs 감사 로그 정합성 확인 (DB 함수 내 logs INSERT 여부 확인 필요)
-  [ ] PDF 업로드 → 텍스트 파싱 → TF-IDF → Groq API → 단어장 생성 E2E 테스트
-      ※ GROQ_API_KEY Supabase Secrets 등록 확인 필요
-  [x] 단어장 2개 초과 생성 차단 확인 (FE PdfUploadBar API 레벨 검증 완료)
+  [ ] 책갈피 감사 로그 정합성 확인 (star_dust_logs DB 함수 내 logs INSERT 여부 확인 필요)
+  [ ] PDF 업로드 → pdfjs-dist 텍스트 추출 → Groq API → 단어장 생성 E2E 테스트
+      ※ FE에서 pdfjs-dist로 텍스트 추출 후 JSON으로 Edge Function(create-wordbook-from-pdf)에 전송
+      ※ GROQ_API_KEY Supabase Secrets 등록 완료
+  [ ] 단어 검토 모달 동작 확인 (WordReviewModal — 단어 선택/제외/직접 추가, save-wordbook Edge Function 저장)
+      ※ 단어 직접 추가 시 generate-word-info Edge Function 호출 확인 필요
+  [x] 단어장 2개 초과 생성 차단 확인 (FE PdfUploadBar wordbookCount >= 2 검증 완료)
       [ ] DB 트리거 이중 검증 확인 필요
+  [x] N01/N02 단어 검색 기능 확인 (WordList 내 search input — 영어/일반뜻 기준 필터)
   [x] 퀴즈 Lv1 동작 및 결과 저장 확인 (save_quiz_result RPC 연동)
-  [ ] test_results 저장 시 wordbook_id 서버 검증 확인 (save_quiz_result DB 함수 내부 확인 필요)
+  [ ] quiz_results 저장 시 wordbook_id 서버 검증 확인 (save_quiz_result DB 함수 내부 확인 필요)
+  [ ] U04 학습 진행률 계산 확인 (word_progress 테이블 is_completed 기준 — 퀴즈 정답 시 진행률 반영 여부)
   [x] 관리자 권한 분리 보안 테스트 (AdminRoute role !== 'admin' 시 리다이렉트)
   [ ] RLS 정책 전체 확인 (각 테이블별 본인 데이터만 접근 가능한지 — Supabase 콘솔에서 확인 필요)
-  [x] Supabase Realtime 동기화 확인 (useStarDust hook — star_dust UPDATE 이벤트 구독)
+  [x] 책갈피 Realtime 동기화 확인 (useStarDust hook — star_dust 컬럼 UPDATE 이벤트 구독)
 ================================================================
