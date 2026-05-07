@@ -33,10 +33,10 @@ EduLex - 전공 어휘 학습 웹 플랫폼
         - [N02] 단어장 최대 2개 제한, 단어장 삭제 기능 MVP 포함
                 페이지 레이아웃: 상단 PDF 업로드 바 → 하단 단어장 카드 목록
   v1.4  ERD 변경사항 반영 (DB 무결성·보안 강화)
-        - [H02] 책갈피 보상: star_dust_logs 감사 로그 기록 Constraints 추가
+        - [H02] 책갈피 보상: bookmark_logs 감사 로그 기록 Constraints 추가
         - [N01] 공식 단어장 단어 카드에 일반 뜻(general_meaning) 표시 추가
         - [N02] 추후 기능(수정·삭제) 확장 대비 명시
-        - [N03] 테스트 책갈피 보상: star_dust_logs 감사 로그 기록 Constraints 추가
+        - [N03] 테스트 책갈피 보상: bookmark_logs 감사 로그 기록 Constraints 추가
         - [H01] 칭호 시스템 추후 확장 예정 명시
   v1.5  [H04] 구현 중 발견된 기술 결함 수정 반영
         - [H04] AI API: OpenAI → Gemini 2.0 Flash로 변경
@@ -123,7 +123,7 @@ EduLex - 전공 어휘 학습 웹 플랫폼
 [UPD][H02] 출석 체크 / 스트릭
 - User Story: 사용자는 메인 화면에서 간편하게 출석을 확인하고 보상(책갈피)을 받을 수 있다.
 - Constraints: 스트릭 시각화(풀이 Lv에 따라 진하기 표현), 하루 1회 체크 가능
-              책갈피 지급 시 star_dust_logs에 감사 로그 기록 (reason: 'attendance')
+              책갈피 지급 시 bookmark_logs에 감사 로그 기록 (reason: 'attendance')
               책갈피 잔액 업데이트와 로그 기록은 트랜잭션으로 묶어 처리
 - 우선순위: Medium
 - ※ v1.4: 책갈피 보상 감사 로그 Constraints 추가
@@ -206,7 +206,7 @@ EduLex - 전공 어휘 학습 웹 플랫폼
     Lv3 - 뜻→영어 주관식  ← Post-MVP
     Lv4 - 영어 예문 빈칸채우기 주관식  ← Post-MVP
     테스트 결과(정답률) 저장 (quiz_results 테이블), 테스트 참여 보상(책갈피) 지급
-    책갈피 지급 시 star_dust_logs에 감사 로그 기록 (reason: 'test_reward')
+    책갈피 지급 시 bookmark_logs에 감사 로그 기록 (reason: 'test_reward')
     책갈피 잔액 업데이트와 로그 기록은 트랜잭션으로 묶어 처리
     quiz_results 저장 시 wordbook_type에 따라 서버에서 단어장 존재 여부 검증
 - 우선순위: High

@@ -247,7 +247,7 @@ backlogs/
 - [x] H01 전공 선택 → N01 공식 단어장 자동 갱신 연동 확인 (MajorContext useEffect)
 - [x] H03 최근 단어장/최근 테스트 요약 표시 확인 (fetchRecent — user_wordbooks, quiz_results 조회)
 - [x] 책갈피 지급 흐름 전체 테스트 (출석 체크 → check_attendance RPC → H05 Realtime 반영)
-- [ ] 책갈피 감사 로그 정합성 확인 (star_dust_logs DB 함수 내 logs INSERT 여부 확인 필요)
+- [ ] 책갈피 감사 로그 정합성 확인 (bookmark_logs DB 함수 내 logs INSERT 여부 확인 필요)
 - [ ] PDF 업로드 → 순수 JS 텍스트 파서 → TF-IDF 추출 → Groq API → 단어장 생성 E2E 테스트
 - [ ] 단어장 2개 초과 생성 차단 확인 (FE PdfUploadBar 검증 완료, DB 트리거 이중 검증 확인 필요)
 - [x] N01/N02 단어 검색 기능 확인 (영어/일반뜻 기준 필터)
@@ -275,7 +275,7 @@ backlogs/
 | `user_words` | 나만의 단어 (PDF→AI 추출, 최대 30단어/단어장) |
 | `attendance` | 출석 기록 및 스트릭 |
 | `quiz_results` | 테스트 결과 (정답률, 책갈피 지급) |
-| `star_dust_logs` | 책갈피 지급/차감 감사 로그 (reason: attendance / test_reward) |
+| `bookmark_logs` | 책갈피 지급/차감 감사 로그 (reason: attendance / test_reward) |
 | `word_progress` | 단어별 학습 완료 여부 (is_completed — U04 진행률 기준) |
 
 ---

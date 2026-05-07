@@ -64,7 +64,7 @@ create table if not exists public.attendance (
   unique(user_id, date)
 );
 
-create table if not exists public.star_dust_logs (
+create table if not exists public.bookmark_logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references public.users(id) on delete cascade,
   change_amount integer not null,
@@ -73,7 +73,7 @@ create table if not exists public.star_dust_logs (
   created_at timestamptz default now()
 );
 
-create table if not exists public.test_results (
+create table if not exists public.quiz_results (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references public.users(id) on delete cascade,
   wordbook_id uuid not null,
@@ -115,7 +115,7 @@ create trigger trg_wordbook_limit
   for each row execute function public.check_wordbook_limit();
 
 -- ----------------------------------------------------------------
--- 3. 출석 체크 + 별가루 트랜잭션 함수 (H02)
+-- 3. 출석 체크 + 책갈피 트랜잭션 함수 (H02)
 -- ----------------------------------------------------------------
 
 create or replace function public.check_attendance(p_user_id uuid)
@@ -131,7 +131,7 @@ begin
   set star_dust = star_dust + 10
   where id = p_user_id;
 
-  insert into public.star_dust_logs(user_id, change_amount, reason, ref_id)
+  insert into public.bookmark_logs(user_id, change_amount, reason, ref_id)
   values (p_user_id, 10, 'attendance', v_attendance_id);
 end;
 $$;
@@ -168,7 +168,7 @@ begin
     end if;
   end if;
 
-  insert into public.test_results(user_id, wordbook_id, wordbook_type, score, total, correct)
+  insert into public.quiz_results(user_id, wordbook_id, wordbook_type, score, total, correct)
   values (p_user_id, p_wordbook_id, p_wordbook_type, p_score, p_total, p_correct)
   returning id into v_result_id;
 
@@ -178,7 +178,7 @@ begin
   set star_dust = star_dust + v_reward
   where id = p_user_id;
 
-  insert into public.star_dust_logs(user_id, change_amount, reason, ref_id)
+  insert into public.bookmark_logs(user_id, change_amount, reason, ref_id)
   values (p_user_id, v_reward, 'test_reward', v_result_id);
 end;
 $$;
@@ -216,8 +216,8 @@ alter table public.official_words enable row level security;
 alter table public.user_wordbooks enable row level security;
 alter table public.user_words enable row level security;
 alter table public.attendance enable row level security;
-alter table public.star_dust_logs enable row level security;
-alter table public.test_results enable row level security;
+alter table public.bookmark_logs enable row level security;
+alter table public.quiz_results enable row level security;
 alter table public.word_progress enable row level security;
 
 -- users
@@ -256,13 +256,13 @@ create policy "user_w_all" on public.user_words for all
 drop policy if exists "attendance_all" on public.attendance;
 create policy "attendance_all" on public.attendance for all using (auth.uid() = user_id);
 
--- star_dust_logs
-drop policy if exists "logs_select" on public.star_dust_logs;
-create policy "logs_select" on public.star_dust_logs for select using (auth.uid() = user_id);
+-- bookmark_logs
+drop policy if exists "logs_select" on public.bookmark_logs;
+create policy "logs_select" on public.bookmark_logs for select using (auth.uid() = user_id);
 
--- test_results
-drop policy if exists "results_all" on public.test_results;
-create policy "results_all" on public.test_results for all using (auth.uid() = user_id);
+-- quiz_results
+drop policy if exists "results_all" on public.quiz_results;
+create policy "results_all" on public.quiz_results for all using (auth.uid() = user_id);
 
 -- word_progress
 drop policy if exists "progress_all" on public.word_progress;
