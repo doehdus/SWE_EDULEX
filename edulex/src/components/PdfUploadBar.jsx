@@ -1,63 +1,323 @@
 import { useRef, useState } from 'react'
-import { Loader2, CheckCircle2, AlertCircle, Plus } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertCircle, Trash2, X, Sparkles, FileText, Upload } from 'lucide-react'
+import * as pdfjsLib from 'pdfjs-dist'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useMajor } from '../context/MajorContext'
 import { LIB, BOOK_COLORS } from '../constants/theme'
 
-// 이미 꽂혀있는 책 슬롯
-function BookSlot({ index, filled, color }) {
-  if (filled) {
-    return (
-      <div
-        className="relative flex flex-col rounded-sm overflow-hidden"
-        style={{
-          width: 48,
-          height: 80,
-          background: `linear-gradient(180deg, ${color.cover} 0%, ${color.spine} 100%)`,
-          boxShadow: 'inset -3px 0 6px rgba(0,0,0,0.25), 2px 2px 6px rgba(0,0,0,0.15)',
-        }}
-      >
-        {/* 책 상단 하이라이트 */}
-        <div className="h-1.5 w-full" style={{ background: color.accent, opacity: 0.6 }} />
-        {/* 책 질감 줄 */}
-        <div
-          className="flex-1"
-          style={{
-            backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 7px, rgba(255,255,255,0.07) 7px, rgba(255,255,255,0.07) 8px)',
-          }}
-        />
-        {/* 책 번호 */}
-        <div
-          className="absolute bottom-2 left-0 right-0 flex justify-center"
-          style={{ color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 700 }}
-        >
-          {index + 1}
-        </div>
-      </div>
-    )
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).href
+
+async function extractTextFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise
+  const maxPages = Math.min(pdf.numPages, 30)
+  const pageTexts = []
+  for (let i = 1; i <= maxPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    pageTexts.push(content.items.map(item => item.str).join(' '))
+  }
+  return pageTexts.join('\n').slice(0, 20000)
+}
+
+async function callEdge(endpoint, body, token) {
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${endpoint}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    }
+  )
+  if (!response.ok) {
+    const err = await response.json()
+    throw new Error(err.message || '요청에 실패했습니다.')
+  }
+  return response.json()
+}
+
+function WordReviewModal({ words, majors, onSave, onClose }) {
+  const [title, setTitle] = useState('')
+  const [titleError, setTitleError] = useState('')
+  const [rows, setRows] = useState(words)
+  const [newWord, setNewWord] = useState('')
+  const [addingStatus, setAddingStatus] = useState('idle')
+  const [addError, setAddError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [expandedIdx, setExpandedIdx] = useState(null)
+
+  const toggleRow = (idx) =>
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, _excluded: !r._excluded } : r))
+
+  const removeRow = (idx) =>
+    setRows(prev => prev.filter((_, i) => i !== idx))
+
+  const handleAddWord = async () => {
+    const word = newWord.trim()
+    if (!word) return
+    if (rows.some(r => r.english.toLowerCase() === word.toLowerCase())) {
+      setAddError('이미 목록에 있는 단어입니다.')
+      return
+    }
+    setAddingStatus('loading')
+    setAddError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const result = await callEdge('generate-word-info', { word, majors }, session.access_token)
+      setRows(prev => [...prev, { ...result, _excluded: false }])
+      setNewWord('')
+      setAddingStatus('idle')
+    } catch (err) {
+      setAddingStatus('error')
+      setAddError(err.message)
+    }
   }
 
+  const handleSave = async () => {
+    if (!title.trim()) {
+      setTitleError('단어장 제목을 입력해주세요.')
+      return
+    }
+    setTitleError('')
+    const included = rows.filter(r => !r._excluded)
+    if (included.length === 0) {
+      setTitleError('포함할 단어를 최소 1개 이상 선택해주세요.')
+      return
+    }
+    setSaving(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      await callEdge(
+        'save-wordbook',
+        {
+          title: title.trim(),
+          words: included.map(({ english, general_meaning, major_meaning, general_example, major_example }) => ({
+            english, general_meaning, major_meaning, general_example, major_example,
+          })),
+        },
+        session.access_token
+      )
+      onSave()
+    } catch (err) {
+      setTitleError(err.message)
+      setSaving(false)
+    }
+  }
+
+  const includedCount = rows.filter(r => !r._excluded).length
+
   return (
-    <div
-      className="relative flex flex-col items-center justify-center rounded-sm"
-      style={{
-        width: 48,
-        height: 80,
-        background: 'rgba(0,0,0,0.08)',
-        border: '2px dashed rgba(0,0,0,0.12)',
-      }}
-    >
-      <span style={{ color: 'rgba(0,0,0,0.2)', fontSize: 10, fontWeight: 700 }}>{index + 1}</span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(20,10,5,0.6)', backdropFilter: 'blur(4px)' }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden" style={{ maxHeight: '88vh' }}>
+
+        {/* 헤더 */}
+        <div className="shrink-0 px-6 pt-5 pb-4" style={{ borderBottom: `1px solid ${LIB.parchmentDark}` }}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: LIB.inkLight }}>단어장 만들기</p>
+              <input
+                value={title}
+                onChange={e => { setTitle(e.target.value); setTitleError('') }}
+                placeholder="단어장 제목을 입력하세요"
+                maxLength={50}
+                className="w-full text-lg font-bold bg-transparent outline-none placeholder:font-normal"
+                style={{
+                  color: LIB.ink,
+                  borderBottom: `2px solid ${titleError ? '#ef4444' : title ? LIB.wood : LIB.shelfLine}`,
+                  paddingBottom: 4,
+                  transition: 'border-color 0.15s',
+                }}
+              />
+              {titleError && <p className="text-xs text-red-500 mt-1">{titleError}</p>}
+            </div>
+            <button
+              onClick={onClose}
+              className="shrink-0 mt-1 p-1.5 rounded-lg transition hover:bg-gray-100"
+              style={{ color: LIB.inkLight }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* 선택 카운터 */}
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-xs" style={{ color: LIB.inkLight }}>
+              전체 <strong style={{ color: LIB.ink }}>{rows.length}</strong>개 중
+              <strong style={{ color: LIB.wood }}> {includedCount}개</strong> 선택됨
+            </span>
+            {rows.length > 0 && (
+              <>
+                <span style={{ color: LIB.shelfLine }}>·</span>
+                <button
+                  onClick={() => setRows(prev => prev.map(r => ({ ...r, _excluded: false })))}
+                  className="text-xs transition hover:underline"
+                  style={{ color: LIB.inkLight }}
+                >
+                  전체 선택
+                </button>
+                <span style={{ color: LIB.shelfLine }}>·</span>
+                <button
+                  onClick={() => setRows(prev => prev.map(r => ({ ...r, _excluded: true })))}
+                  className="text-xs transition hover:underline"
+                  style={{ color: LIB.inkLight }}
+                >
+                  전체 해제
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* 단어 목록 */}
+        <div className="flex-1 overflow-y-auto px-6 py-3 space-y-1.5" style={{ background: LIB.cream }}>
+          {rows.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <FileText size={28} style={{ color: LIB.shelfLine }} />
+              <p className="text-sm" style={{ color: LIB.inkLight }}>단어를 추가해주세요.</p>
+            </div>
+          )}
+          {rows.map((row, idx) => (
+            <div
+              key={idx}
+              className="rounded-xl transition-all"
+              style={{
+                background: row._excluded ? 'transparent' : 'white',
+                border: `1px solid ${row._excluded ? LIB.parchmentDark : LIB.shelfLine}`,
+                opacity: row._excluded ? 0.45 : 1,
+              }}
+            >
+              {/* 메인 행 */}
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={!row._excluded}
+                  onChange={() => toggleRow(idx)}
+                  className="shrink-0 w-4 h-4 rounded accent-violet-600 cursor-pointer"
+                />
+                <button
+                  className="flex-1 min-w-0 text-left"
+                  onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
+                >
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <span className="font-bold text-sm truncate" style={{ color: LIB.ink }}>{row.english}</span>
+                    <span className="text-xs truncate" style={{ color: LIB.inkMid }}>{row.general_meaning}</span>
+                    {row.major_meaning && row.major_meaning !== row.general_meaning && (
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0"
+                        style={{ background: LIB.parchment, color: LIB.inkMid }}
+                      >
+                        {row.major_meaning}
+                      </span>
+                    )}
+                  </div>
+                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
+                    className="text-[10px] px-2 py-1 rounded-lg transition"
+                    style={{ color: LIB.inkLight, background: expandedIdx === idx ? LIB.parchment : 'transparent' }}
+                  >
+                    예문 {expandedIdx === idx ? '▲' : '▼'}
+                  </button>
+                  <button
+                    onClick={() => removeRow(idx)}
+                    className="p-1 rounded-lg transition hover:bg-red-50"
+                    style={{ color: LIB.shelfLine }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                    onMouseLeave={e => e.currentTarget.style.color = LIB.shelfLine}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {/* 예문 펼치기 */}
+              {expandedIdx === idx && (
+                <div
+                  className="px-4 pb-3 pt-1 space-y-2 text-xs"
+                  style={{ borderTop: `1px solid ${LIB.parchmentDark}` }}
+                >
+                  {row.general_example && (
+                    <div>
+                      <span className="font-semibold" style={{ color: LIB.inkLight }}>일반  </span>
+                      <span className="italic" style={{ color: LIB.inkMid }}>{row.general_example}</span>
+                    </div>
+                  )}
+                  {row.major_example && (
+                    <div>
+                      <span className="font-semibold" style={{ color: LIB.inkLight }}>전공  </span>
+                      <span className="italic" style={{ color: LIB.inkMid }}>{row.major_example}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* 단어 직접 추가 */}
+        <div className="shrink-0 px-6 py-3" style={{ borderTop: `1px solid ${LIB.parchmentDark}` }}>
+          <div className="flex gap-2">
+            <input
+              value={newWord}
+              onChange={e => { setNewWord(e.target.value); setAddError('') }}
+              onKeyDown={e => e.key === 'Enter' && handleAddWord()}
+              placeholder="단어 직접 추가 (예: algorithm)"
+              disabled={addingStatus === 'loading'}
+              className="flex-1 text-sm border rounded-xl px-3 py-2 outline-none transition disabled:bg-gray-50"
+              style={{ borderColor: addError ? '#ef4444' : LIB.shelfLine }}
+              onFocus={e => { if (!addError) e.currentTarget.style.borderColor = LIB.wood }}
+              onBlur={e => { if (!addError) e.currentTarget.style.borderColor = LIB.shelfLine }}
+            />
+            <button
+              onClick={handleAddWord}
+              disabled={addingStatus === 'loading' || !newWord.trim()}
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl transition shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: LIB.wood, color: LIB.parchment }}
+            >
+              {addingStatus === 'loading'
+                ? <><Loader2 size={12} className="animate-spin" /> 생성 중</>
+                : <><Sparkles size={12} /> AI 추가</>
+              }
+            </button>
+          </div>
+          {addError && <p className="text-xs text-red-500 mt-1.5">{addError}</p>}
+        </div>
+
+        {/* 저장 버튼 */}
+        <div className="shrink-0 px-6 py-4" style={{ borderTop: `1px solid ${LIB.parchmentDark}` }}>
+          <button
+            onClick={handleSave}
+            disabled={saving || includedCount === 0}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: `linear-gradient(135deg, ${LIB.wood} 0%, ${LIB.woodLight} 100%)`, color: LIB.parchment }}
+          >
+            {saving
+              ? <><Loader2 size={15} className="animate-spin" /> 저장 중...</>
+              : `단어장 저장  (${includedCount}개)`
+            }
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
 
 export default function PdfUploadBar({ onComplete, wordbookCount }) {
   const { user } = useAuth()
+  const { selectedMajors } = useMajor()
   const inputRef = useRef()
-  const [status, setStatus] = useState('idle') // idle | uploading | processing | done | error
+  const [status, setStatus] = useState('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [dragOver, setDragOver] = useState(false)
+  const [extractedWords, setExtractedWords] = useState([])
 
   const isDisabled = wordbookCount >= 2
 
@@ -68,44 +328,32 @@ export default function PdfUploadBar({ onComplete, wordbookCount }) {
       setErrorMsg('PDF 파일만 업로드 가능합니다.')
       return
     }
-
-    setStatus('uploading')
+    setStatus('processing')
     setErrorMsg('')
-
-    const { count } = await supabase
-      .from('user_wordbooks')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-
-    if (count >= 2) {
-      setStatus('error')
-      setErrorMsg('단어장은 최대 2개까지만 생성할 수 있습니다.')
-      return
-    }
-
-    const formData = new FormData()
-    formData.append('pdf', file)
-    formData.append('userId', user.id)
-
     try {
-      setStatus('processing')
+      const text = await extractTextFromPDF(file)
+      if (text.trim().length < 50) {
+        throw new Error('PDF에서 텍스트를 읽을 수 없습니다. 텍스트가 선택되는 PDF만 지원됩니다.')
+      }
       const { data: { session } } = await supabase.auth.getSession()
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-wordbook-from-pdf`,
         {
           method: 'POST',
-          headers: { Authorization: `Bearer ${session.access_token}` },
-          body: formData,
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text, majors: selectedMajors }),
         }
       )
-
       if (!response.ok) {
         const err = await response.json()
-        throw new Error(err.message || '단어장 생성에 실패했습니다.')
+        throw new Error(err.message || '단어 추출에 실패했습니다.')
       }
-
-      setStatus('done')
-      onComplete?.()
+      const data = await response.json()
+      setExtractedWords(data.words.map(w => ({ ...w, _excluded: false })))
+      setStatus('reviewing')
     } catch (err) {
       setStatus('error')
       setErrorMsg(err.message)
@@ -115,142 +363,152 @@ export default function PdfUploadBar({ onComplete, wordbookCount }) {
   }
 
   const handleFileChange = (e) => processFile(e.target.files[0])
-
   const handleDrop = (e) => {
     e.preventDefault()
     setDragOver(false)
     if (isDisabled) return
     processFile(e.dataTransfer.files[0])
   }
-
   const handleDragOver = (e) => { e.preventDefault(); if (!isDisabled) setDragOver(true) }
   const handleDragLeave = () => setDragOver(false)
-
-  const slotColors = [BOOK_COLORS[4], BOOK_COLORS[0]] // 빨강, 보라
-
-  const isActive = status === 'uploading' || status === 'processing'
+  const handleSaved = () => {
+    setStatus('done')
+    setExtractedWords([])
+    onComplete?.()
+  }
 
   return (
-    <div
-      className="w-full rounded-xl overflow-hidden transition-all duration-200"
-      style={{
-        background: dragOver
-          ? `linear-gradient(135deg, ${LIB.parchmentDark} 0%, ${LIB.parchment} 100%)`
-          : LIB.cream,
-        border: `1.5px solid ${dragOver ? LIB.gold : LIB.shelfLine}`,
-        boxShadow: dragOver ? `0 0 0 3px ${LIB.gold}33` : 'none',
-      }}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-    >
-      {/* 서가 상단 선반 */}
-      <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${LIB.wood}, ${LIB.woodLight})` }} />
+    <>
+      <div
+        className="w-full rounded-2xl overflow-hidden transition-all duration-200 cursor-pointer"
+        style={{
+          background: dragOver ? LIB.parchmentDark : LIB.cream,
+          border: `1.5px dashed ${dragOver ? LIB.wood : isDisabled ? LIB.parchmentDark : LIB.shelfLine}`,
+          boxShadow: dragOver ? `0 0 0 3px ${LIB.gold}44` : 'none',
+        }}
+        onClick={() => { if (!isDisabled && status === 'idle') inputRef.current?.click() }}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+      >
+        <div className="px-6 py-5 flex items-center gap-4">
 
-      <div className="px-5 py-4 flex items-center gap-5">
-
-        {/* 책 슬롯 2개 */}
-        <div
-          className="flex items-end gap-1.5 px-3 pt-2 pb-1 rounded-lg shrink-0 relative"
-          style={{ background: 'rgba(0,0,0,0.05)' }}
-        >
-          {[0, 1].map(i => (
-            <BookSlot
-              key={i}
-              index={i}
-              filled={i < wordbookCount}
-              color={slotColors[i]}
-            />
-          ))}
-          {/* 선반 바닥 */}
+          {/* 아이콘 영역 */}
           <div
-            className="absolute bottom-0 left-0 right-0 h-1 rounded-b-lg"
-            style={{ background: LIB.woodMid }}
-          />
-        </div>
+            className="shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all"
+            style={{
+              background: status === 'error'
+                ? '#fee2e2'
+                : status === 'done'
+                  ? '#dcfce7'
+                  : LIB.parchment,
+              color: status === 'error'
+                ? '#dc2626'
+                : status === 'done'
+                  ? '#16a34a'
+                  : LIB.wood,
+            }}
+          >
+            {status === 'processing' && <Loader2 size={22} className="animate-spin" strokeWidth={2} />}
+            {status === 'error' && <AlertCircle size={22} strokeWidth={2} />}
+            {status === 'done' && <CheckCircle2 size={22} strokeWidth={2} />}
+            {(status === 'idle' || status === 'reviewing') && (
+              isDisabled ? <FileText size={22} strokeWidth={2} /> : <Upload size={22} strokeWidth={2} />
+            )}
+          </div>
 
-        {/* 우측 텍스트 + 버튼 */}
-        <div className="flex-1 min-w-0">
-          {status === 'idle' && (
-            <>
-              <p className="text-xs font-bold mb-0.5" style={{ color: LIB.inkMid }}>
-                {isDisabled ? '서가가 가득 찼습니다 (최대 2권)' : `서가 공간 ${2 - wordbookCount}칸 남음`}
-              </p>
-              <p className="text-[11px] mb-3" style={{ color: LIB.inkLight }}>
-                {isDisabled ? '기존 단어장을 삭제하면 새로 추가할 수 있습니다.' : 'PDF를 업로드하면 AI가 핵심 단어를 추출해 서가에 꽂아드립니다.'}
-              </p>
-              {!isDisabled && (
-                <button
-                  onClick={() => inputRef.current?.click()}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all hover:opacity-80"
-                  style={{
-                    background: `linear-gradient(135deg, ${LIB.wood} 0%, ${LIB.woodLight} 100%)`,
-                    color: LIB.parchment,
-                    boxShadow: '0 2px 8px rgba(92,58,30,0.3)',
-                  }}
-                >
-                  <Plus size={13} strokeWidth={2.5} /> PDF 업로드
-                </button>
-              )}
-            </>
-          )}
-
-          {isActive && (
-            <div className="flex items-center gap-2" style={{ color: LIB.woodLight }}>
-              <Loader2 size={16} strokeWidth={2} className="animate-spin shrink-0" />
-              <div>
-                <p className="text-xs font-bold" style={{ color: LIB.ink }}>
-                  {status === 'uploading' ? '파일 업로드 중...' : 'AI가 단어를 추출하는 중...'}
+          {/* 텍스트 영역 */}
+          <div className="flex-1 min-w-0">
+            {status === 'idle' && (
+              <>
+                <p className="text-sm font-bold" style={{ color: isDisabled ? LIB.inkLight : LIB.ink }}>
+                  {isDisabled ? '서가가 가득 찼습니다' : 'PDF로 단어장 만들기'}
                 </p>
-                <p className="text-[11px]" style={{ color: LIB.inkLight }}>
-                  {status === 'processing' ? '잠시만 기다려주세요 (30초~1분 소요)' : ''}
+                <p className="text-xs mt-0.5" style={{ color: LIB.inkLight }}>
+                  {isDisabled
+                    ? '기존 단어장을 삭제하면 새로 추가할 수 있습니다.'
+                    : `클릭하거나 PDF를 드래그하세요 · 서가 공간 ${2 - wordbookCount}칸 남음`}
                 </p>
-              </div>
-            </div>
-          )}
-
-          {status === 'done' && (
-            <div className="flex items-center gap-2">
-              <CheckCircle2 size={18} strokeWidth={2} style={{ color: '#16a34a' }} className="shrink-0" />
-              <div>
-                <p className="text-xs font-bold" style={{ color: '#16a34a' }}>서가에 꽂혔습니다!</p>
+              </>
+            )}
+            {status === 'processing' && (
+              <>
+                <p className="text-sm font-bold" style={{ color: LIB.ink }}>AI가 단어를 분석하는 중...</p>
+                <p className="text-xs mt-0.5" style={{ color: LIB.inkLight }}>30초~1분 정도 소요됩니다</p>
+              </>
+            )}
+            {status === 'reviewing' && (
+              <>
+                <p className="text-sm font-bold" style={{ color: LIB.ink }}>
+                  단어 {extractedWords.length}개 추출 완료
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: LIB.inkLight }}>검토 후 저장하세요</p>
+              </>
+            )}
+            {status === 'done' && (
+              <>
+                <p className="text-sm font-bold" style={{ color: '#16a34a' }}>단어장이 서가에 꽂혔습니다!</p>
                 <button
-                  onClick={() => setStatus('idle')}
-                  className="text-[11px] underline mt-0.5"
+                  onClick={e => { e.stopPropagation(); setStatus('idle') }}
+                  className="text-xs mt-0.5 underline"
                   style={{ color: LIB.inkLight }}
                 >
                   다시 업로드
                 </button>
-              </div>
-            </div>
-          )}
-
-          {status === 'error' && (
-            <div className="flex items-start gap-2">
-              <AlertCircle size={16} strokeWidth={2} style={{ color: '#dc2626' }} className="shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold" style={{ color: '#dc2626' }}>{errorMsg}</p>
+              </>
+            )}
+            {status === 'error' && (
+              <>
+                <p className="text-sm font-bold" style={{ color: '#dc2626' }}>{errorMsg}</p>
                 <button
-                  onClick={() => setStatus('idle')}
-                  className="text-[11px] underline mt-0.5"
+                  onClick={e => { e.stopPropagation(); setStatus('idle') }}
+                  className="text-xs mt-0.5 underline"
                   style={{ color: LIB.inkLight }}
                 >
                   다시 시도
                 </button>
-              </div>
+              </>
+            )}
+          </div>
+
+          {/* 우측 액션 */}
+          {status === 'reviewing' && (
+            <button
+              onClick={e => { e.stopPropagation(); setStatus('reviewing') }}
+              className="shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition hover:opacity-80"
+              style={{ background: LIB.wood, color: LIB.parchment }}
+            >
+              검토하기
+            </button>
+          )}
+          {status === 'idle' && !isDisabled && (
+            <div
+              className="shrink-0 px-4 py-2 rounded-xl text-xs font-bold pointer-events-none"
+              style={{ background: LIB.parchment, color: LIB.inkMid, border: `1px solid ${LIB.shelfLine}` }}
+            >
+              PDF
             </div>
           )}
         </div>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".pdf"
+          className="hidden"
+          onChange={handleFileChange}
+          disabled={isDisabled}
+        />
       </div>
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".pdf"
-        className="hidden"
-        onChange={handleFileChange}
-        disabled={isDisabled}
-      />
-    </div>
+      {status === 'reviewing' && (
+        <WordReviewModal
+          words={extractedWords}
+          majors={selectedMajors}
+          onSave={handleSaved}
+          onClose={() => setStatus('idle')}
+        />
+      )}
+    </>
   )
 }

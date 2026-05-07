@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Flame, Bookmark, BookOpen, Book, ChevronRight } from 'lucide-react'
 import CharacterPreview from '../components/CharacterPreview'
@@ -85,22 +86,28 @@ function DayCircle({ date, todayStr, attendedDates }) {
 
 function StreakBar({ last7Days, today, streak, checkedToday, loading, rewardMsg, onAttendance, attendedDates }) {
   const todayStr = today()
+  const [btnHover, setBtnHover] = useState(false)
+  const [btnPress, setBtnPress] = useState(false)
   return (
     <div
-      className="rounded-2xl px-7 py-6 flex items-center gap-8 relative overflow-hidden"
+      className="rounded-2xl px-7 py-6 flex items-center gap-8 relative overflow-hidden select-none"
       style={{
         background: `linear-gradient(135deg, ${LIB.wood} 0%, ${LIB.woodLight} 100%)`,
-        boxShadow: '0 4px 16px rgba(92,58,30,0.35)',
+        boxShadow: '0 4px 20px rgba(92,58,30,0.40)',
       }}
     >
       {/* 배경 질감 */}
       <div className="absolute inset-0 opacity-[0.06] pointer-events-none"
         style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(255,255,255,0.5) 20px, rgba(255,255,255,0.5) 21px)' }}
       />
+      {/* 좌상단 빛 번짐 */}
+      <div className="absolute top-0 left-0 w-40 h-20 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse at 20% 0%, rgba(255,255,255,0.10) 0%, transparent 70%)' }}
+      />
 
-      {/* 좌측: 불꽃 카운터 (Duolingo 스타일) */}
-      <div className="shrink-0 flex flex-col items-center">
-        <Flame size={36} strokeWidth={1.5} style={{ color: LIB.gold }} className="mb-0.5" />
+      {/* 좌측: 불꽃 카운터 */}
+      <div className="shrink-0 flex flex-col items-center" style={{ filter: 'drop-shadow(0 2px 6px rgba(201,168,76,0.4))' }}>
+        <Flame size={38} strokeWidth={1.5} style={{ color: LIB.gold }} className="mb-0.5" />
         <div className="text-3xl font-black leading-none" style={{ color: LIB.gold }}>{streak}</div>
         <div className="text-[10px] font-bold mt-0.5" style={{ color: LIB.goldLight }}>일 연속</div>
       </div>
@@ -125,10 +132,24 @@ function StreakBar({ last7Days, today, streak, checkedToday, loading, rewardMsg,
         <button
           onClick={onAttendance}
           disabled={checkedToday || loading}
-          className="px-5 py-2.5 rounded-xl text-sm font-black transition-all duration-200 whitespace-nowrap"
+          onMouseEnter={() => !checkedToday && setBtnHover(true)}
+          onMouseLeave={() => { setBtnHover(false); setBtnPress(false) }}
+          onMouseDown={() => !checkedToday && setBtnPress(true)}
+          onMouseUp={() => setBtnPress(false)}
+          className="px-5 py-2.5 rounded-xl text-sm font-black whitespace-nowrap"
           style={checkedToday
-            ? { background: 'rgba(255,255,255,0.12)', color: LIB.goldLight, cursor: 'default' }
-            : { background: LIB.gold, color: LIB.ink, boxShadow: '0 3px 10px rgba(201,168,76,0.5)' }
+            ? { background: 'rgba(255,255,255,0.12)', color: LIB.goldLight, cursor: 'default', transition: 'none' }
+            : {
+                background: btnPress
+                  ? '#b8962e'
+                  : btnHover
+                  ? '#e0bc5a'
+                  : LIB.gold,
+                color: LIB.ink,
+                boxShadow: btnHover ? '0 6px 18px rgba(201,168,76,0.65)' : '0 3px 10px rgba(201,168,76,0.5)',
+                transform: btnPress ? 'scale(0.96)' : btnHover ? 'scale(1.04)' : 'scale(1)',
+                transition: 'transform 0.15s cubic-bezier(.34,1.56,.64,1), box-shadow 0.15s ease, background 0.15s ease',
+              }
           }
         >
           {loading ? '...' : checkedToday
@@ -147,30 +168,40 @@ function StreakBar({ last7Days, today, streak, checkedToday, loading, rewardMsg,
 }
 
 function BookCard({ to, label, title, subtitle, bookColor }) {
+  const [hovered, setHovered] = useState(false)
+  const [pressed, setPressed] = useState(false)
   return (
     <Link
       to={to}
-      className="flex gap-4 rounded-2xl p-5 transition-all duration-200 group relative overflow-hidden"
+      className="flex gap-4 rounded-2xl p-5 group relative overflow-hidden select-none"
       style={{
         background: LIB.cream,
         border: `1px solid ${LIB.shelfLine}`,
-        boxShadow: '0 2px 8px rgba(92,58,30,0.08)',
+        boxShadow: pressed
+          ? '0 2px 6px rgba(92,58,30,0.10)'
+          : hovered
+          ? '0 10px 30px rgba(92,58,30,0.22)'
+          : '0 2px 8px rgba(92,58,30,0.08)',
+        transform: pressed
+          ? 'translateY(0px) rotate(0deg)'
+          : hovered
+          ? 'translateY(-5px) rotate(-0.4deg)'
+          : 'translateY(0px) rotate(0deg)',
+        transition: 'transform 0.22s cubic-bezier(.34,1.56,.64,1), box-shadow 0.22s ease',
       }}
-      onMouseEnter={e => {
-        e.currentTarget.style.transform = 'translateY(-3px)'
-        e.currentTarget.style.boxShadow = '0 8px 24px rgba(92,58,30,0.18)'
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.transform = 'translateY(0px)'
-        e.currentTarget.style.boxShadow = '0 2px 8px rgba(92,58,30,0.08)'
-      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setPressed(false) }}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
     >
       {/* 책등 (spine) */}
       <div
-        className="w-4 shrink-0 rounded-l-sm self-stretch transition-all duration-200 group-hover:w-5"
+        className="w-4 shrink-0 rounded-l-sm self-stretch"
         style={{
           background: `linear-gradient(180deg, ${bookColor} 0%, rgba(0,0,0,0.4) 100%)`,
           boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.3)',
+          width: hovered ? 20 : 16,
+          transition: 'width 0.22s ease',
         }}
       />
       {/* 책 내용 */}
@@ -184,14 +215,36 @@ function BookCard({ to, label, title, subtitle, bookColor }) {
             : <p className="text-sm font-bold" style={{ color: LIB.shelfLine }}>아직 없어요</p>
           }
         </div>
-        <p className="text-xs mt-3 font-semibold flex items-center gap-1 transition-all duration-200 group-hover:gap-2" style={{ color: LIB.inkLight }}>
+        <p
+          className="text-xs mt-3 font-semibold flex items-center"
+          style={{
+            color: LIB.inkLight,
+            gap: hovered ? 8 : 4,
+            transition: 'gap 0.2s ease',
+          }}
+        >
           {subtitle} <ChevronRight size={12} />
         </p>
       </div>
       {/* 책갈피 장식 */}
       <div
-        className="absolute top-0 right-5 w-3 h-6 rounded-b-sm opacity-70 transition-all duration-200 group-hover:h-8 group-hover:opacity-100"
-        style={{ background: LIB.deepRed }}
+        className="absolute top-0 right-5 w-3 rounded-b-sm"
+        style={{
+          background: LIB.deepRed,
+          height: hovered ? 32 : 24,
+          opacity: hovered ? 1 : 0.7,
+          transition: 'height 0.22s ease, opacity 0.2s ease',
+        }}
+      />
+      {/* hover 시 빛 번짐 */}
+      <div
+        className="absolute inset-0 pointer-events-none rounded-2xl"
+        style={{
+          background: hovered
+            ? 'radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.18) 0%, transparent 70%)'
+            : 'transparent',
+          transition: 'background 0.3s ease',
+        }}
       />
     </Link>
   )

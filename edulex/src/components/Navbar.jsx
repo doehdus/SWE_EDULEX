@@ -133,21 +133,43 @@ export default function Navbar() {
         </div>
 
         <nav className="flex flex-col gap-1 px-4 py-4 flex-1">
-          {MENU_ITEMS.map(({ path, label, icon }) => (
-            <Link
-              key={path}
-              to={path}
-              onClick={() => setSidebarOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition"
-              style={pathname === path
-                ? { background: LIB.wood, color: LIB.parchment }
-                : { color: LIB.inkMid }
-              }
-            >
-              {icon}
-              {label}
-            </Link>
-          ))}
+          {MENU_ITEMS.map(({ path, label, icon }) => {
+            const isActive = pathname === path
+            return (
+              <Link
+                key={path}
+                to={path}
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold relative overflow-hidden group"
+                style={{
+                  background: isActive ? LIB.wood : 'transparent',
+                  color: isActive ? LIB.parchment : LIB.inkMid,
+                  transition: 'background 0.18s ease, color 0.18s ease, transform 0.15s ease',
+                }}
+                onMouseEnter={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = LIB.parchmentDark
+                    e.currentTarget.style.transform = 'translateX(4px)'
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.transform = 'translateX(0)'
+                  }
+                }}
+              >
+                {isActive && (
+                  <div
+                    className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full"
+                    style={{ background: LIB.gold }}
+                  />
+                )}
+                {icon}
+                {label}
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="px-6 py-5" style={{ borderTop: `1px solid ${LIB.parchmentDark}` }}>

@@ -2,3 +2,9 @@ project_id = "wuneastyskjxrbsefert"
 
 [functions.create-wordbook-from-pdf]
 verify_jwt = false
+
+[functions.generate-word-info]
+verify_jwt = false
+
+[functions.save-wordbook]
+verify_jwt = false
