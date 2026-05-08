@@ -126,6 +126,37 @@ bookmark_logs     (id, user_id, word_id, created_at)
 
 ---
 
+## Routing
+
+### 라우트 구조
+
+| 경로 | 페이지 | 가드 |
+|---|---|---|
+| `/landing` | LandingPage | PublicOnlyRoute |
+| `/signup` | SignupPage | PublicOnlyRoute |
+| `/login` | LoginPage | PublicOnlyRoute |
+| `/admin/login` | AdminLoginPage | PublicOnlyRoute |
+| `/` | MainPage | ProtectedRoute |
+| `/wordbook/official` | OfficialWordbookPage | ProtectedRoute |
+| `/wordbook/my` | MyWordbookPage | ProtectedRoute |
+| `/quiz` | QuizPage | ProtectedRoute |
+| `/dashboard` | DashboardPage | ProtectedRoute |
+| `/admin` | AdminWordbookPage | AdminRoute |
+
+### 라우트 가드 (`components/ProtectedRoute.jsx`)
+
+| 컴포넌트 | 조건 | 리다이렉트 |
+|---|---|---|
+| `ProtectedRoute` | 비로그인 → `/landing` | 로그인 필요 페이지 전체 |
+| `PublicOnlyRoute` | 로그인 상태 → `role === 'admin'`이면 `/admin`, 아니면 `/` | 로그인/회원가입 등 공개 페이지 |
+| `AdminRoute` | 비로그인 → `/login`, `role !== 'admin'` → `/` | 관리자 전용 페이지 |
+
+- 가드는 `AuthContext`의 `user`, `profile`, `loading`을 참조한다
+- `profile === null`은 아직 로드 중을 의미하므로 loading 처리 필요
+- `role` 판별은 반드시 `profile.role` DB 값으로만 → 클라이언트 변수 저장 금지
+
+---
+
 ## Security
 
 - 퀴즈 정답 배열을 JSX state나 props로 노출 금지
