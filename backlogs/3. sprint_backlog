@@ -127,6 +127,113 @@ Post-MVP 선택 : High 1개 + Medium 8개 + Low 7개 (총 16개 SBI, 삭제 5개
 ----------------------------------------------------------------
 [3. 네비게이션 메뉴]
 ----------------------------------------------------------------
+[SBI-N03-L02] 테스트 (퀴즈 — Lv2: 영어→뜻 객관식)
+User Story: As a 로그인한 사용자, I want to 영어 단어를 보고 알맞은 뜻을 고르는 퀴즈를 풀고 싶다, So that Lv1과 반대 방향으로 단어를 점검해 암기를 강화할 수 있다.
+세부 작업:
+FE - Lv2 UI: 영어→뜻 4지선다 객관식 (진행 바, 정답/오답 시각 피드백)
+FE - 테스트 시작 화면에 Lv2 선택 옵션 추가 (기존 Lv1 화면 확장)
+FE - Lv2 문제 생성 로직 (buildQuestions 함수 Lv2 모드 분기 — 영어 단어 질문, 뜻 보기 4지선다 shuffle)
+FE - 테스트 결과 화면 (점수, 정답 수 표시, 책갈피 보상 지급 완료 메시지)
+BE - Lv2 결과 저장 API (save_quiz_result RPC p_level 파라미터 추가)
+BE - 결과 저장 성공/실패 응답 처리 및 오류 코드 정의
+[SBI-N03-L03] 테스트 (퀴즈 — Lv3: 뜻→영어 주관식) 
+User Story: As a 로그인한 사용자, I want to 뜻을 보고 영어 단어를 직접 입력하는 주관식 퀴즈를 풀고 싶다, So that 객관식보다 높은 난이도로 단어 철자까지 정확히 암기할 수 있다.
+세부 작업:
+FE - Lv3 UI: 뜻 표시 + 영어 단어 직접 입력 폼 (진행 바, 정답/오답 시각 피드백)
+FE - 정답 처리 로직 (대소문자 무시 여부 등 채점 기준 정책 반영)
+FE - 테스트 시작 화면에 Lv3 선택 옵션 추가
+FE - Lv3 문제 생성 로직 (buildQuestions 함수 Lv3 모드 분기 — 보기 없이 입력 필드 렌더링)
+FE - 테스트 결과 화면 (점수, 정답 수 표시, 책갈피 보상 지급 완료 메시지)
+BE - Lv3 결과 저장 API (save_quiz_result RPC p_level 파라미터 Lv3 지원)
+BE - 결과 저장 성공/실패 응답 처리 및 오류 코드 정의
+우선순위: Low
+
+
+[SBI-N03-L04] 테스트 (퀴즈 — Lv4: 영어 예문 빈칸채우기 주관식) 
+User Story: As a 로그인한 사용자, I want to 영어 예문의 빈칸에 알맞은 단어를 직접 입력하는 퀴즈를 풀고 싶다, So that 문맥 속에서 단어의 쓰임을 익혀 실전 활용 능력을 높일 수 있다.
+세부 작업:
+FE - Lv4 UI: 예문 빈칸 표시 + 영어 단어 직접 입력 폼 (진행 바, 정답/오답 시각 피드백)
+FE - 테스트 시작 화면에 Lv4 선택 옵션 추가
+FE - Lv4 문제 생성 로직 (buildQuestions 함수 Lv4 모드 분기 — 예문에서 정답 단어 마스킹 처리)
+FE - 테스트 결과 화면 (점수, 정답 수 표시, 책갈피 보상 지급 완료 메시지)
+BE - Lv4 결과 저장 API (save_quiz_result RPC p_level 파라미터 Lv4 지원)
+BE - 결과 저장 성공/실패 응답 처리 및 오류 코드 정의
+우선순위: Low
+
+
+[SBI-N03-L05] 테스트 과정
+단어장의 전체 테스트 진행
+As a 로그인한 사용자,
+ I want to 퀴즈 결과에 따라 단어별 레벨이 자동 승급되고, 해당 레벨의 단어만 테스트에 출제되기를 원한다.
+ So that 아직 완전히 외우지 못한 단어에 집중하고, 최종적으로 모든 단어를 LV4까지 도달시킬 수 있다. 
+
+기본 LV : 단어장 생성 시 모든 단어 LV 1 
+LVn 테스트 → 해당 단어장에서 word_level = n인 단어만 출제 
+출제 대상 단어 0개 → "해당 레벨의 단어가 없습니다" 표시 후 테스트 미진행 
+테스트에서 정답 처리된 단어만 word_level += 1 	
+오답 단어는 word_level 변경 없음 
+
+MAX LV: LV4 가 MAX 레벨이며 레벨 4인 단어들은 모든 테스트를 통과했기 때문에, 단어장 내 모든 단어가 4가 되기 전까지는 테스트에 등장하지 않는다. 
+
+단어장 성취도: 내가 지금까지 얼마나 단어장의 단어들을 LV4  까지 올렸는지, LV4의 단어들의 목록을 보여준다. (+ LV 4 단어들의 비율을 보여준다.)  
+
+단어장 성취도 100% 상태: 
+단어장 내 모든 단어 word_level = 4 →  해당 단어장의 성취도를 100%로 가정, 이후 모든 LVn 테스트에 전체 단어 출제 가능 (복습 모드)
+- User Story:
+    As a 로그인한 사용자,
+    I want to 퀴즈 결과에 따라 단어별 레벨이 자동 승급되고, 해당 레벨의 단어만 테스트에 출제되기를 원한다,
+    So that 아직 완전히 외우지 못한 단어에 집중하고, 최종적으로 모든 단어를 LV4까지 도달시킬 수 있다.
+- 세부 작업
+    [ ] FE - LV4 테스트 버튼 우측에 단어장 LV4의 성취도 비율 표시 컴포넌트
+           (예: "성취도 75% (15/20)" — useWordbookAchievement hook 연동)
+    [ ] FE - 성취도 펼쳐보기 토글 버튼 UI (▼/▲ 아이콘 + 클릭 시 상태 토글)
+    [ ] FE - LV4 완료 단어 목록 스크롤 패널 UI
+           (펼쳤을 때 표시, max-height 고정 + overflow-y-auto, 단어 카드 리스트)
+    [ ] FE - LV4 단어 카드 컴포넌트 (영어 + 전공뜻 표시, 읽기 전용 — flip 없음)
+    [ ] FE - LVn 테스트 진입 전 word_level = n 단어 개수 사전 조회 분기 로직
+    [ ] FE - 출제 대상 단어 0개 시 "해당 레벨의 단어가 없습니다" 안내 모달
+           (테스트 미진행 + 이전 화면 복귀 처리)
+    [ ] FE - LV별 단어 수 카운트 표시 UI
+           (예: "LV1: 12 / LV2: 5 / LV3: 3 / LV4: 10")> LV1 테스트 버튼 옆에 숫자만 표시: 
+	ex) LV1:0, LV2:12  
+    [ ] FE - 테스트 진행 중 정답 단어 ID 누적 수집 (correctWordIds 배열)
+    [ ] FE - 테스트 결과 화면에서 승급된 단어 시각 피드백
+           (예: "↑ LV2로 승급된 단어 7개")
+    [ ] FE - 성취도 100% 도달 시 복습 모드 배지 UI
+           ("복습 모드" 표시 + 모든 LV 버튼에 전체 단어 출제 가능 표시)
+    [ ] FE - 테스트 종료 후 useWordbookAchievement 재호출
+           (성취도 비율·LV4 목록 자동 갱신)
+    [ ] BE - user_words 테이블에 word_level 컬럼 추가
+           (INT NOT NULL DEFAULT 1, CHECK word_level BETWEEN 1 AND 4)
+    [ ] BE - 기존 user_words 레코드 마이그레이션 (전부 word_level = 1로 백필)
+    [ ] BE - 단어장 생성 시 word_level 기본값 1 부여
+           (create-wordbook-from-pdf, save-wordbook Edge Function INSERT 구문 수정)
+    [ ] BE - 레벨별 단어 조회 API
+           (user_words .eq('wordbook_id', id).eq('word_level', n))
+    [ ] BE - 출제 대상 단어 수 조회 API (LVn 단어 count 반환 — FE 사전 분기용)
+    [ ] BE - promote_word_level RPC 함수 작성
+           (정답 word_id 배열 입력 → 일괄 UPDATE word_level = word_level + 1
+            WHERE id IN (...) AND word_level < 4, user_id 본인 검증 포함)
+    [ ] BE - LV4 MAX 제한 (UPDATE 시 word_level < 4 조건으로 4 초과 방지)
+    [ ] BE - save_quiz_result RPC 확장
+           (정답 word_id 배열 파라미터 추가 → 단일 트랜잭션 내에서
+            quiz_results INSERT + promote_word_level + 책갈피 지급)
+    [ ] BE - 단어장 성취도 조회 API / RPC
+           (반환: { total, lv4_count, ratio, lv4_words: [{id, english, meaning}] })
+    [ ] BE - 단어장 성취도 100% 판정 로직
+           (모든 단어 word_level = 4 → achievement_complete = true 플래그 반환)
+    [ ] BE - 복습 모드 분기 로직
+           (achievement_complete = true 시 LVn 테스트 출제 쿼리에서
+            word_level 필터 무시하고 전체 단어 풀에서 출제 허용)
+    [ ] BE - RLS 정책 추가
+           (user_words.word_level UPDATE는 본인 user_id 레코드만 허용)
+- 우선순위: High
+- ※ 신규 추가: SBI-N03 Lv1 단일 테스트 → LV1~LV4 단계별 출제·승급 구조로 확장
+- ※ SBI-U04(학습 진행률 — word_progress.is_completed)와 관계 정리 필요
+   → word_level = 4 시 is_completed = true로 동기화하거나, 진행률 계산을
+     word_level 기준으로 일원화하는 방안 검토
+- ※ 동시성 주의: 동일 단어에 대한 중복 승급 방지 위해
+   promote_word_level RPC를 단일 트랜잭션 + WHERE word_level < 4 조건으로 보장
 
 [SBI-N04] 커뮤니티 - 정보 공유
 - User Story:
@@ -277,62 +384,7 @@ Post-MVP 선택 : High 1개 + Medium 8개 + Low 7개 (총 16개 SBI, 삭제 5개
 - ※ v1.0 추가: Post-MVP — 세션 기반 학습 시간 측정 및 시각화
 - ※ v1.1 변경: 우선순위 Medium → Low (내부 회의 결과 미확정 상태)
 
-[SBI-N04] 단어 레벨 자동 승급 + 단어장 성취도
-- User Story:
-    As a 로그인한 사용자,
-    I want to 퀴즈 결과에 따라 단어별 레벨이 자동 승급되고, 해당 레벨의 단어만 테스트에 출제되기를 원한다,
-    So that 아직 완전히 외우지 못한 단어에 집중하고, 최종적으로 모든 단어를 LV4까지 도달시킬 수 있다.
-- 세부 작업
-    [ ] FE - LV4 테스트 버튼 우측에 단어장 LV4의 성취도 비율 표시 컴포넌트
-           (예: "성취도 75% (15/20)" — useWordbookAchievement hook 연동)
-    [ ] FE - 성취도 펼쳐보기 토글 버튼 UI (▼/▲ 아이콘 + 클릭 시 상태 토글)
-    [ ] FE - LV4 완료 단어 목록 스크롤 패널 UI
-           (펼쳤을 때 표시, max-height 고정 + overflow-y-auto, 단어 카드 리스트)
-    [ ] FE - LV4 단어 카드 컴포넌트 (영어 + 전공뜻 표시, 읽기 전용 — flip 없음)
-    [ ] FE - LVn 테스트 진입 전 word_level = n 단어 개수 사전 조회 분기 로직
-    [ ] FE - 출제 대상 단어 0개 시 "해당 레벨의 단어가 없습니다" 안내 모달
-           (테스트 미진행 + 이전 화면 복귀 처리)
-    [ ] FE - LV별 단어 수 카운트 표시 UI
-           (예: "LV1: 12 / LV2: 5 / LV3: 3 / LV4: 10")> LV1 테스트 버튼 옆에 숫자만 표시: 
-   ex) LV1:0, LV2:12  
-    [ ] FE - 테스트 진행 중 정답 단어 ID 누적 수집 (correctWordIds 배열)
-    [ ] FE - 테스트 결과 화면에서 승급된 단어 시각 피드백
-           (예: "↑ LV2로 승급된 단어 7개")
-    [ ] FE - 성취도 100% 도달 시 복습 모드 배지 UI
-           ("복습 모드" 표시 + 모든 LV 버튼에 전체 단어 출제 가능 표시)
-    [ ] FE - 테스트 종료 후 useWordbookAchievement 재호출
-           (성취도 비율·LV4 목록 자동 갱신)
-    [ ] BE - user_words 테이블에 word_level 컬럼 추가
-           (INT NOT NULL DEFAULT 1, CHECK word_level BETWEEN 1 AND 4)
-    [ ] BE - 기존 user_words 레코드 마이그레이션 (전부 word_level = 1로 백필)
-    [ ] BE - 단어장 생성 시 word_level 기본값 1 부여
-           (create-wordbook-from-pdf, save-wordbook Edge Function INSERT 구문 수정)
-    [ ] BE - 레벨별 단어 조회 API
-           (user_words .eq('wordbook_id', id).eq('word_level', n))
-    [ ] BE - 출제 대상 단어 수 조회 API (LVn 단어 count 반환 — FE 사전 분기용)
-    [ ] BE - promote_word_level RPC 함수 작성
-           (정답 word_id 배열 입력 → 일괄 UPDATE word_level = word_level + 1
-            WHERE id IN (...) AND word_level < 4, user_id 본인 검증 포함)
-    [ ] BE - LV4 MAX 제한 (UPDATE 시 word_level < 4 조건으로 4 초과 방지)
-    [ ] BE - save_quiz_result RPC 확장
-           (정답 word_id 배열 파라미터 추가 → 단일 트랜잭션 내에서
-            quiz_results INSERT + promote_word_level + 책갈피 지급)
-    [ ] BE - 단어장 성취도 조회 API / RPC
-           (반환: { total, lv4_count, ratio, lv4_words: [{id, english, meaning}] })
-    [ ] BE - 단어장 성취도 100% 판정 로직
-           (모든 단어 word_level = 4 → achievement_complete = true 플래그 반환)
-    [ ] BE - 복습 모드 분기 로직
-           (achievement_complete = true 시 LVn 테스트 출제 쿼리에서
-            word_level 필터 무시하고 전체 단어 풀에서 출제 허용)
-    [ ] BE - RLS 정책 추가
-           (user_words.word_level UPDATE는 본인 user_id 레코드만 허용)
-- 우선순위: High
-- ※ 신규 추가: SBI-N03 Lv1 단일 테스트 → LV1~LV4 단계별 출제·승급 구조로 확장
-- ※ SBI-U04(학습 진행률 — word_progress.is_completed)와 관계 정리 필요
-   → word_level = 4 시 is_completed = true로 동기화하거나, 진행률 계산을
-     word_level 기준으로 일원화하는 방안 검토
-- ※ 동시성 주의: 동일 단어에 대한 중복 승급 방지 위해
-   promote_word_level RPC를 단일 트랜잭션 + WHERE word_level < 4 조건으로 보장
+
 
 [SBI-U05] 최근 테스트 기록 및 오답 노트
 - User Story:
