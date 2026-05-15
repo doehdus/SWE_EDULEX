@@ -25,6 +25,7 @@ export default function DashboardPage() {
       ...(myWbs ?? []).map(w => ({ ...w, type: 'user' })),
     ]
     const results = await Promise.all(allWbs.map(async (wb) => {
+
       const table = wb.type === 'official' ? 'official_words' : 'user_words'
       const { count: total } = await supabase.from(table).select('id', { count: 'exact', head: true }).eq('wordbook_id', wb.id)
       const { count: completed } = await supabase.from('word_progress').select('id', { count: 'exact', head: true })
