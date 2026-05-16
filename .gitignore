@@ -4,4 +4,5 @@ edulex/.env.local
 edulex/node_modules/
 edulex/dist/
 edulex/supabase/.temp/
-
+.claude\agents
+backlogs
