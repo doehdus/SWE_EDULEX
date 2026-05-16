@@ -13,11 +13,16 @@ export function MajorProvider({ children }) {
 
   useEffect(() => {
     if (!user) return
-    supabase.from('users').select('major').eq('id', user.id).single()
+    supabase
+      .from('users')
+      .select('major')
+      .eq('id', user.id)
+      .single()
       .then(({ data }) => {
         const raw = data?.major ?? []
         const migrated = migrate(raw)
         setSelectedMajors(migrated)
+        // 이름이 바뀐 항목이 있으면 DB도 자동 업데이트
         if (migrated.some((m, i) => m !== raw[i])) {
           supabase.from('users').update({ major: migrated }).eq('id', user.id)
         }
@@ -26,7 +31,10 @@ export function MajorProvider({ children }) {
 
   const updateMajors = async (majors) => {
     setSelectedMajors(majors)
-    await supabase.from('users').update({ major: majors }).eq('id', user.id)
+    await supabase
+      .from('users')
+      .update({ major: majors })
+      .eq('id', user.id)
   }
 
   return (

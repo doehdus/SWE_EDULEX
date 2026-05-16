@@ -24,19 +24,35 @@ export function useMainPage() {
   }, [user])
 
   const fetchWordbookCount = () =>
-    supabase.from('user_wordbooks').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+    supabase
+      .from('user_wordbooks')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
       .then(({ count }) => setWordbookCount(count ?? 0))
 
   const checkTodayAttendance = async () => {
-    const { data } = await supabase.from('attendance').select('id').eq('user_id', user.id).eq('date', todayStr()).maybeSingle()
+    const { data } = await supabase
+      .from('attendance')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('date', todayStr())
+      .maybeSingle()
     setCheckedToday(!!data)
   }
 
   const calculateStreak = async () => {
-    const { data } = await supabase.from('attendance').select('date').eq('user_id', user.id).order('date', { ascending: false }).limit(30)
+    const { data } = await supabase
+      .from('attendance')
+      .select('date')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false })
+      .limit(30)
+
     if (!data || data.length === 0) { setStreak(0); return }
+
     setAttendedDates(new Set(data.map(r => r.date)))
-    let count = 0
+
+    let count  = 0
     let cursor = new Date(todayStr())
     for (const { date } of data) {
       const d = new Date(date)
@@ -47,17 +63,26 @@ export function useMainPage() {
     setStreak(count)
   }
 
-  // SBI-H03: 최근 단어장/퀴즈 결과 조회
   const fetchRecent = async () => {
-    const { data: wb } = await supabase.from('user_wordbooks').select('id, title').eq('user_id', user.id)
-      .order('updated_at', { ascending: false }).limit(1).maybeSingle()
+    const { data: wb } = await supabase
+      .from('user_wordbooks')
+      .select('id, title')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
     setRecentWordbook(wb)
-    const { data: qz } = await supabase.from('quiz_results').select('wordbook_id, score').eq('user_id', user.id)
-      .order('created_at', { ascending: false }).limit(1).maybeSingle()
+
+    const { data: qz } = await supabase
+      .from('quiz_results')
+      .select('wordbook_id, score')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
     setRecentQuiz(qz)
   }
 
-  // SBI-H02: check_attendance RPC 호출 — 출석 + 책갈피 트랜잭션
   const handleAttendance = async () => {
     if (checkedToday || loading) return
     setLoading(true)
@@ -78,5 +103,12 @@ export function useMainPage() {
     return d.toISOString().split('T')[0]
   })
 
-  return { wordbookCount, setWordbookCount, streak, checkedToday, loading, rewardMsg, recentWordbook, recentQuiz, last7Days, today: todayStr, attendedDates, handleAttendance }
+  return {
+    wordbookCount, setWordbookCount,
+    streak, checkedToday, loading, rewardMsg,
+    recentWordbook, recentQuiz,
+    last7Days, today: todayStr,
+    attendedDates,
+    handleAttendance,
+  }
 }
