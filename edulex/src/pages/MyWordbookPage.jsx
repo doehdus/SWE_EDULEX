@@ -254,10 +254,12 @@ function WordModal({ word, idx, total, color, pageFlip, flipDir, onPrev, onNext,
           </div>
 
           <div className="space-y-3">
-            {word.general_meaning && (
+            {(word.general_meaning || word.general_example) && (
               <div className="rounded-2xl p-4" style={{ background: color.accent + '22', border: `1px solid ${color.accent}` }}>
                 <p className="text-[9px] font-black uppercase tracking-[0.18em] mb-1.5" style={{ color: color.spine + 'aa' }}>일반적 의미</p>
-                <p className="text-sm font-semibold leading-relaxed select-text" style={{ color: '#2d1b00' }}>{word.general_meaning}</p>
+                {word.general_meaning && (
+                  <p className="text-sm font-semibold leading-relaxed select-text" style={{ color: '#2d1b00' }}>{word.general_meaning}</p>
+                )}
                 {word.general_example && (
                   <p className="text-xs mt-2 italic leading-relaxed pl-3 border-l-2 select-text" style={{ color: '#8b6e4e', borderColor: color.accent }}>
                     "{word.general_example}"
