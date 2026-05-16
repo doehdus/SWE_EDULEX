@@ -37,7 +37,7 @@ Phase 구조   : Phase 1 → Phase 2 → Phase 3 (순차 진행)
 
 
 ================================================================
-█ PHASE 1 — 기반 구축 (Foundation)
+█ PHASE 1 — 기반 구축 (Foundation) ✅ 검증 완료 (2026-05-16)
 ================================================================
 목표      : 모든 후속 작업이 의존하는 공통 레이어 완성.
             "캐릭터가 화면에 보이고 DB에 상태가 저장된다" 까지 도달.
@@ -45,6 +45,13 @@ Phase 구조   : Phase 1 → Phase 2 → Phase 3 (순차 진행)
 검증 기준 : 임시 페이지에서 useCharacter 호출 → CharacterCanvas 에 합성 캐릭터가
             도트 흐림 없이 표시되고, DB 의 owned_items·equipped_items 가
             정상 반환되는지 확인.
+검증 결과 : 2026-05-16 — /character-test 임시 라우트에서 다음 항목 모두 통과 후 제거됨.
+            ✓ preload + useCharacter.loading 정상 수렴
+            ✓ 9프레임 walk 사이클 + 4방향 시점 전환 정상
+            ✓ DB 저장 모드 — 보유 검증·필수 슬롯 차단·DB 영속성 정상
+            ✓ 프리뷰 모드 — 갑옷 z 정렬, 박쥐 날개 앞뒤, 제트팩 합성 모두 정상
+            ✓ CHECK 제약 — 필수 슬롯 NULL 시 DB 레벨 차단 확인
+            임시 자산(pages/CharacterTestPage.jsx, App.jsx 라우트) 제거 완료.
 ================================================================
 
 
@@ -67,22 +74,23 @@ Phase 구조   : Phase 1 → Phase 2 → Phase 3 (순차 진행)
            → 저장소 루트 CREDITS.md 생성 (실제 사용 31개 PNG 항목만 추림, LPC 원본 경로 ↔ 우리 경로 매핑)
     [x] FE - public/assets/character/LICENSE.txt 작성
            (적용 라이선스 5종 + 의무 요약 + ShareAlike 적용 범위 명시 + CREDITS.md 링크)
-    [ ] FE - edulex/src/constants/character.js 신규 작성
+    [x] FE - edulex/src/constants/character.js 신규 작성
            (ITEMS, SHOP_CATALOG, ITEM_SLOT, MANDATORY_SLOTS, DEFAULT_EQUIPPED, DEFAULT_OWNED export)
            ※ 모든 src 경로는 '/assets/character/...' 로 작성
-    [ ] FE - 아이템별 가격(price) 필드를 ITEMS에 추가
-           (SBI-N08 기존 가격표 반영: 밀짚모자/삿갓 3000, 안경/선글라스 3000, 풍선 5000,
-            해변/우주 5000, 책 쌓이기 9000, 스트릭 색상 9000 등)
-           ※ HANDOFF의 카탈로그에는 price 미정의 — 본 SBI에서 ITEMS 객체에 price 키 추가
-    [ ] FE - utils/characterImages.js 신규 작성
+    [x] FE - 아이템별 가격(price) 필드를 ITEMS에 추가
+           bedhead/outfit_basic : 0 (기본 지급, 구매 불가)
+           idol/long/bonnie/crown/backpack : 3000
+           outfit_formal/outfit_fashion2 : 5000
+           outfit_armor/jetpack/bat_wings : 9000
+           ※ SBI-N08 명세상 라벨 "밀짚모자/삿갓"이나 실제 에셋은 bonnie(검은모자)/crown(왕관) — 디자인팀 확정 후 라벨/가격 재조정 필요
+    [x] FE - utils/characterImages.js 신규 작성
            (preloadAllCharacterImages, getImage — 모듈 스코프 imageCache 객체로 관리)
-    [ ] FE - 앱 시작 시 preload 호출 위치 결정 (App.jsx useEffect 또는 ShopPage 진입 시 lazy preload)
-    [ ] FE - 상점 페이지 푸터에 "에셋 크레딧" 링크 배치 (SH-07 작업 중 함께 처리 가능)
-           → CREDITS.md 또는 /credits 라우트로 연결, "Sprites by LPC contributors (CC-BY-SA 3.0 외)" 명기
+    [ ] FE - preload 호출 위치 결정 — SH-07 ShopPage 진입 시 lazy preload 채택 예정 (보류)
+    [ ] FE - 상점 페이지 푸터에 "에셋 크레딧" 링크 배치 — SH-07 범위로 이관
 - 우선순위: High
 - ※ CLAUDE.md 규칙상 "새 상수는 constants/theme.js에 추가"이나, 게임 도메인 데이터는
    별도 파일 분리가 합리적 — character.js 신규 생성으로 진행 (HANDOFF.md 섹션 7 Step 2 따름)
-- ※ 2026-05-16 진행 상황: 에셋 복사 / CREDITS.md / LICENSE.txt 완료. 상수·캐시·푸터 미구현.
+- ※ 2026-05-16 진행 상황: 에셋·크레딧·상수·이미지 캐시 완료. preload/푸터는 SH-07 진입 시 처리.
 
 
 ----------------------------------------------------------------
@@ -95,22 +103,25 @@ Phase 구조   : Phase 1 → Phase 2 → Phase 3 (순차 진행)
     I want to users 테이블에 보유/장착 아이템 컬럼을 추가하고 RLS 정책을 설정하고 싶다,
     So that 사용자의 캐릭터 상태를 영속화하면서도 본인 데이터만 접근 가능하도록 보장할 수 있다.
 - 세부 작업:
-    [ ] BE - edulex/supabase/migrations/YYYYMMDDHHMMSS_shop_schema.sql 생성
-    [ ] BE - users 테이블 컬럼 추가:
-           owned_items    text[]  DEFAULT ARRAY['bedhead', 'outfit_basic']
-           equipped_items jsonb   DEFAULT '{"hair":"bedhead","outfit":"outfit_basic","hat":null,"bag":null,"wings":null}'
-    [ ] BE - 기존 users 레코드 마이그레이션 (NULL 행에 DEFAULT 값 백필)
-    [ ] BE - equipped_items 무결성 CHECK 제약 또는 트리거 검토
-           (필수 슬롯 hair/outfit 이 NULL이면 INSERT/UPDATE 거부)
-    [ ] BE - RLS 정책 확인:
-           기존 users_select / users_update 정책이 owned_items / equipped_items 컬럼 포함하는지 검증
-           (auth.uid() = id 조건으로 본인 행만 SELECT/UPDATE 허용)
-    [ ] BE - BEGIN; COMMIT; 트랜잭션 래핑 + 인덱스 불필요(점검만)
+    [x] BE - edulex/supabase/migrations/20260516000000_shop_schema.sql 생성 (파일 작성만 — 실행은 사용자 수동)
+    [x] BE - users 테이블 컬럼 추가:
+           owned_items    text[] NOT NULL DEFAULT ARRAY['bedhead', 'outfit_basic']
+           equipped_items jsonb  NOT NULL DEFAULT '{"hair":"bedhead","outfit":"outfit_basic","hat":null,"bag":null,"wings":null}'::jsonb
+    [x] BE - 기존 users 레코드 백필 UPDATE 추가 (NULL 또는 필수 슬롯 누락 행 대비)
+    [x] BE - equipped_items 무결성 CHECK 제약 채택:
+           users_equipped_items_required_slots_chk
+           (hair, outfit 키 존재 + 두 슬롯 NOT NULL 검증)
+    [x] BE - RLS 정책 검증 — 기존 users_select / users_update 가 row-level 조건(auth.uid()=id)만 사용
+           → 새 컬럼 자동 커버, 별도 정책 추가 불필요 (마이그레이션 파일 상단 주석에 명시)
+    [x] BE - BEGIN; COMMIT; 트랜잭션 래핑 완료, 인덱스 미추가
+    [ ] BE - 마이그레이션 실행 (사용자 수동: Supabase SQL Editor 또는 `supabase db push`)
 - 우선순위: High
 - ※ shop_items / user_items 별도 테이블은 채택하지 않음
    → 카탈로그는 클라이언트 상수(character.js)로 관리, 보유/장착 상태만 DB 저장
    → 가격·구매 검증은 purchase_item RPC 내부에서 character.js 미러링 매핑으로 처리
 - ※ 추후 아이템 수 증가 시 shop_items 테이블 분리 마이그레이션 별도 SBI로 진행
+- ※ Phase 2 SH-03 작성 시 주의: bookmark_logs.ref_id 가 uuid 타입이므로 owned_items 의 text 식별자를
+   직접 넣을 수 없음 → ref_id NULL + reason 인코딩('shop_purchase:bedhead' 등) 또는 컬럼 추가 결정 필요.
 
 
 ----------------------------------------------------------------
@@ -123,16 +134,16 @@ Phase 구조   : Phase 1 → Phase 2 → Phase 3 (순차 진행)
     I want to 내 캐릭터의 현재 장착 상태를 픽셀아트 도트로 미리 볼 수 있다,
     So that 구매 전/후의 외형 변화를 시각적으로 확인할 수 있다.
 - 세부 작업:
-    [ ] FE - components/CharacterCanvas.jsx 신규 작성
+    [x] FE - components/CharacterCanvas.jsx 신규 작성
            (props: equipped, frameIndex, direction, size — HANDOFF 섹션 5 코드 이식)
-    [ ] FE - getActiveLayers(equipped) 헬퍼 함수 구현
+    [x] FE - getActiveLayers(equipped) 헬퍼 함수 구현
            (_body / _head / _face 항상 포함 → 5개 슬롯 추가 → z + di 기준 정렬)
-    [ ] FE - useEffect 내 canvas 2D context drawImage 합성
+    [x] FE - useEffect 내 canvas 2D context drawImage 합성
            (ctx.imageSmoothingEnabled = false 필수)
-    [ ] FE - 의존성 배열: [equipped, frameIndex, direction, size]
-    [ ] FE - 이미지 캐시 미스 시 fallback 처리 (해당 레이어 skip + console.warn)
-    [ ] FE - style: imageRendering: 'pixelated' (도트 흐림 방지)
-    [ ] FE - 도서관 테마 적용: canvas 배경 LIB.cream + 테두리 LIB.shelfLine rounded-2xl
+    [x] FE - 의존성 배열: [equipped, frameIndex, direction, size]
+    [x] FE - 이미지 캐시 미스 시 fallback 처리 (해당 레이어 skip + console.warn)
+    [x] FE - style: imageRendering: 'pixelated' (도트 흐림 방지)
+    [x] FE - 도서관 테마 적용: canvas 배경 LIB.cream + 테두리 LIB.shelfLine rounded-2xl
 - 우선순위: High
 - ※ z 정렬 동률 처리: di(draw index) 필드로 갑옷 plate/shoulders 순서 보장 (z=60 충돌)
 - ※ 박쥐 날개 / 제트팩 등 멀티 레이어 아이템도 ITEMS[id].layers 가 배열이므로 동일 로직으로 처리
@@ -144,31 +155,53 @@ Phase 구조   : Phase 1 → Phase 2 → Phase 3 (순차 진행)
     I want to 캐릭터의 보유 아이템과 장착 상태를 Supabase에서 fetch/update 하는 훅을 단일 인터페이스로 제공하고 싶다,
     So that ShopPage·MainPage·CharacterPreview가 같은 hook을 통해 상태를 공유한다.
 - 세부 작업:
-    [ ] FE - hooks/useCharacter.js 신규 작성
-    [ ] FE - 반환 상태: { owned: Set<string>, equipped: object, loading: boolean }
-    [ ] FE - 반환 함수: fetchCharacter, buyItem(itemId), equipItem(slot, itemId)
-    [ ] FE - fetchCharacter: users.select('owned_items, equipped_items, bookmark').eq('id', user.id).single()
+    [x] FE - hooks/useCharacter.js 신규 작성
+    [x] FE - 반환 상태: { owned: Set<string>, equipped: object, loading: boolean }
+    [x] FE - 반환 함수: fetchCharacter, buyItem(itemId), equipItem(slot, itemId)
+    [x] FE - fetchCharacter: users.select('owned_items, equipped_items').eq('id', user.id).single()
            (error 시 console.error + return — useAuth.user.id 사용)
+           ※ bookmark 는 useBookmark 훅이 별도 관리하므로 본 훅 select 에서 제외
     [ ] FE - buyItem: supabase.rpc('purchase_item', { p_user_id, p_item_id })
            성공 시 owned/bookmark 로컬 상태 갱신 + AuthContext.fetchProfile 재호출
-    [ ] FE - equipItem: 필수 슬롯 해제 차단 검증 후 users 테이블 equipped_items jsonb UPDATE
-    [ ] FE - useState 초기값: owned = new Set(), equipped = DEFAULT_EQUIPPED, loading = true
-    [ ] FE - 의존성: [user?.id] — user 로그인 변경 시 재조회
+           ※ Phase 1 에서는 STUB(console.warn) 등록. Phase 2 / SH-03 RPC 완료 후 본 항목 활성화.
+    [x] FE - equipItem: 필수 슬롯 해제 차단 + 보유/슬롯 일치 검증 후 users.equipped_items jsonb UPDATE
+    [x] FE - useState 초기값: owned = new Set(), equipped = DEFAULT_EQUIPPED, loading = true
+    [x] FE - 의존성: [user?.id] — user 로그인 변경 시 재조회
 - 우선순위: High
 - ※ 상점/캐릭터 페이지/메인 페이지에서 각각 useCharacter() 호출 시 중복 fetch 발생 가능
    → 빈도 낮으면 허용. RTK 도입 트리거 도달 시 characterSlice로 이전 (별도 SBI)
+- ※ 2026-05-16 진행 상황: fetchCharacter / equipItem 활성, buyItem STUB. Phase 2 진입 시 buyItem 활성화 필요.
 
 
 ================================================================
-█ PHASE 2 — 상점 본 기능 (Purchase & Equipment Flow)
+█ PHASE 2 — 상점 본 기능 (Purchase & Equipment Flow) ✅ 검증 완료 (2026-05-17)
 ================================================================
 목표      : 구매·장착 흐름과 상점 UI 완성.
             "상점에서 책갈피로 아이템을 사서 즉시 장착한다" 까지 도달.
-포함 SBI  : SH-03 (purchase_item RPC) / SH-04 (장착 변경) /
-            SH-07 (상점 페이지 레이아웃) / SH-08 (아이템 카드·구매 모달)
+포함 SBI  : SH-03 (purchase_item RPC) / SH-07 (상점 페이지 레이아웃) /
+            SH-08 (아이템 카드·구매 모달)
+            ※ SH-04 는 SH-06 equipItem 직접 UPDATE 로 흡수 처리됨 (Phase 1 시점).
 검증 기준 : /shop 진입 → 책갈피 차감되며 구매 → 장착/해제 → 새로고침 후에도 상태 유지.
             잔액 부족·중복 구매 에러가 토스트로 표시되는지 확인.
 선행 조건 : Phase 1 검증 기준 통과.
+
+진입 전 결정 (2026-05-16):
+  - bookmark_logs 에 note text 컬럼 추가 마이그레이션 → SH-03 작업 범위에 포함.
+    구매 이력: ref_id = NULL, reason = 'shop_purchase', note = '<item_id>'.
+  - 모자 라벨/가격: 실제 에셋 기준 유지 (bonnie='검은 모자' 3000, crown='왕관' 3000).
+    백로그 N08 명세("밀짚모자/삿갓")는 디자인팀 확정 시 별도 SBI 로 조정 예정.
+
+검증 결과 (2026-05-17):
+  ✓ /shop 진입·캐릭터 패널·카테고리 탭·아이템 그리드 정상
+  ✓ 정상 구매: 모달 → 책갈피 차감 → 자동 장착 → 즉시 캐릭터 반영
+  ✓ DB 영속성: 새로고침 후 보유/장착/잔액 유지
+  ✓ 장착·해제 흐름 정상, 필수 슬롯(머리/의상) 해제 버튼 미표시 확인
+  ✓ 잔액 부족 비활성 버튼 / 중복 구매 차단 정상
+  ※ 진행 중 환경 이슈: DB 초기화 + 재마이그레이션 후 정상화 (옛 이름 잔존 문제 해소)
+
+후속 사항 (Phase 3 또는 별도 SBI):
+  ✓ users.bookmark CHECK (bookmark >= 0) — 20260516020000 마이그레이션에서 처리 완료
+  [ ] 동시 구매(두 탭) SELECT FOR UPDATE 락 — 필요 시 별도 SBI 로 진행
 ================================================================
 
 
@@ -182,45 +215,45 @@ Phase 구조   : Phase 1 → Phase 2 → Phase 3 (순차 진행)
     I want to 책갈피를 차감하고 아이템을 보유 목록에 추가하는 동작이 원자적으로 처리되길 원한다,
     So that 중복 구매·재화 부족·동시성 충돌 상황에서도 데이터 일관성이 유지된다.
 - 세부 작업:
-    [ ] BE - public.purchase_item(p_user_id uuid, p_item_id text) RPC 작성
-           (LANGUAGE plpgsql, SECURITY DEFINER + auth.uid() 검증 필수)
-    [ ] BE - 함수 내부 가격 매핑 테이블 (CASE WHEN p_item_id = ... THEN ... END)
-           character.js의 ITEMS[id].price 와 동일 값 미러링
-    [ ] BE - 유효성 검증 분기:
-           - 알 수 없는 item_id → RAISE EXCEPTION 'invalid_item'
-           - 이미 owned_items 배열에 존재 → RAISE EXCEPTION 'already_owned'
+    [x] BE - 새 마이그레이션 파일 작성: 20260516010000_shop_purchase_rpc.sql
+    [x] BE - bookmark_logs.note text 컬럼 추가 (구매 이력에 item_id 기록용)
+    [x] BE - public.purchase_item(p_user_id uuid, p_item_id text) RETURNS jsonb
+           (LANGUAGE plpgsql, SECURITY DEFINER + auth.uid() 검증)
+    [x] BE - 가격 매핑 (plpgsql CASE) — character.js 미러링:
+           bedhead/outfit_basic 0 (구매 차단) / idol/long/bonnie/crown/backpack 3000 /
+           outfit_formal/outfit_fashion2 5000 / outfit_armor/jetpack/bat_wings 9000
+    [x] BE - 유효성 검증:
+           - 알 수 없거나 기본 지급 아이템 → RAISE EXCEPTION 'invalid_item'
+           - 이미 owned_items 에 존재 → RAISE EXCEPTION 'already_owned'
            - bookmark < price → RAISE EXCEPTION 'insufficient_bookmark'
-    [ ] BE - 단일 트랜잭션 내:
-           UPDATE users
-             SET bookmark = bookmark - v_price,
-                 owned_items = array_append(owned_items, p_item_id)
-             WHERE id = p_user_id;
-    [ ] BE - bookmark_logs INSERT (change_amount = -v_price, reason = 'shop_purchase', ref_id = NULL)
-    [ ] BE - 반환값: jsonb { new_bookmark, owned_items }
-    [ ] BE - GRANT EXECUTE ON FUNCTION public.purchase_item TO authenticated
-    [ ] BE - 마이그레이션 파일에 포함 (SH-02와 동일 파일 또는 후속 파일)
+    [x] BE - UPDATE users: bookmark -= v_price + array_append(owned_items, p_item_id)
+    [x] BE - INSERT INTO bookmark_logs (change_amount = -v_price, reason='shop_purchase',
+           ref_id=NULL, note=p_item_id)
+    [x] BE - 반환값: jsonb { new_bookmark, owned_items }
+    [x] BE - GRANT EXECUTE TO authenticated
+    [ ] BE - 마이그레이션 실행 (사용자 수동: Supabase SQL Editor 또는 supabase db push)
 - 우선순위: High
-- ※ 책갈피 차감을 클라이언트 UPDATE로 직접 수행하면 보안 룰 위반 — 반드시 RPC 경유
-- ※ bookmark_logs.reason 컬럼에 'shop_purchase' 신규 값 도입 — 기존 reason 검증 제약 있을 시 ALTER 필요
+- ※ bookmark_logs.reason CHECK 제약 없음 확인 — 'shop_purchase' 사용에 별도 조정 불필요
+- ※ 후속 SBI 권장 (Phase 3 또는 별도):
+    - users.bookmark CHECK (bookmark >= 0) 컬럼 제약 추가 (현재 RPC 외 경로 방어 부재)
+    - 동시 구매(두 탭에서 동시 클릭) 시 SELECT FOR UPDATE 락 또는 위 CHECK 제약으로 음수 진입 차단
 
 
-[SBI-SH-04] (Phase 2) 장착 상태 변경 (RPC 또는 직접 UPDATE)
+[SBI-SH-04] (Phase 2) 장착 상태 변경 — SH-06 흡수 처리 (2026-05-16 결정)
 - User Story:
     As a 로그인한 사용자,
     I want to 보유한 아이템 중 원하는 것을 슬롯에 장착하거나 선택 슬롯에서 해제하고 싶다,
     So that 학습 성취에 따라 캐릭터 외형을 자유롭게 변경할 수 있다.
 - 세부 작업:
-    [ ] BE - 방안 결정: RPC(equip_item) vs 직접 UPDATE
-           → 권장: 직접 UPDATE (재화 변동 없음, RLS로 보호 가능)
-    [ ] BE - 직접 UPDATE 시 검증 로직은 FE 훅에서 처리:
-           - 장착하려는 item_id 가 owned_items 에 존재하는지
-           - item 의 슬롯이 변경 슬롯과 일치하는지 (ITEM_SLOT 매핑)
+    [x] 방안 결정: 직접 UPDATE 채택 (재화 변동 없음, RLS 의 auth.uid()=id 로 보호 가능)
+    [x] 검증 로직 — FE 훅(SH-06 useCharacter.equipItem) 에서 처리 완료:
+           - 장착 아이템이 owned_items 에 존재하는지 검증
+           - 슬롯 일치 여부 (ITEM_SLOT 매핑) 검증
            - 필수 슬롯(hair/outfit) 해제 시도 차단
-    [ ] BE - 만약 RPC 채택 시 equip_item(p_user_id, p_slot, p_item_id) 작성
-           (p_item_id NULL 허용 → 선택 슬롯 해제)
-    [ ] BE - 변경 후 users.equipped_items jsonb 갱신 검증
-- 우선순위: Medium
-- ※ 본 SBI는 BE 단독 — FE 장착 UI는 SH-08에서 다룸
+    [x] users.equipped_items jsonb 갱신 — SH-06 equipItem 함수에서 수행
+- 우선순위: Medium (흡수 처리됨)
+- ※ Phase 1 검증 통과 시점에 동작 확인 완료. 별도 BE 작업 불필요.
+- ※ DB 측 1차 방어선: users_equipped_items_required_slots_chk CHECK 제약 (SH-02 도입)
 
 
 ----------------------------------------------------------------
@@ -233,26 +266,21 @@ Phase 구조   : Phase 1 → Phase 2 → Phase 3 (순차 진행)
     I want to 캐릭터 프리뷰의 상점 버튼을 눌러 상점 페이지에 진입하고 좌측 캐릭터 / 우측 카테고리·아이템 그리드 레이아웃을 보고 싶다,
     So that 한 화면에서 캐릭터 외형과 구매 가능 아이템을 동시에 비교할 수 있다.
 - 세부 작업:
-    [ ] FE - pages/ShopPage.jsx 신규 작성
-    [ ] FE - App.jsx 라우트 추가:
-           <Route path="/shop" element={
-             <ProtectedRoute><UserLayout><ShopPage/></UserLayout></ProtectedRoute>
-           }/>
-    [ ] FE - CharacterPreview.jsx 의 상점 버튼 onClick → navigate('/shop')
-           (현재 SBI-H06 자리표시 라우팅을 본 SBI에서 실 페이지로 연결)
-    [ ] FE - 2-컬럼 레이아웃:
-           좌측(40%): CharacterCanvas 미리보기 + 현재 장착 슬롯 표시 + 보유 책갈피 수
-           우측(60%): 카테고리 탭 + 아이템 카드 그리드
-    [ ] FE - 카테고리 탭: 모자 / 악세사리 / 배경 / 특수효과 / 머리스타일 / 의상 / 가방 / 날개
-           (SBI-N08 명세 + HANDOFF SHOP_CATALOG 확장 카테고리 정렬)
-    [ ] FE - 디자인 시스템 적용 (edulex-fe.md 섹션 11):
-           background: LIB.parchment / 카드: LIB.cream / 텍스트: LIB.ink·LIB.inkMid
-           카드 hover lift / 버튼 3-state 애니메이션
-    [ ] FE - 페이지 진입 시 preloadAllCharacterImages 호출 + LoadingState 표시
-           (이미 캐시되어 있으면 즉시 resolve → flicker 방지)
+    [x] FE - pages/ShopPage.jsx 신규 작성 (154줄, 5개 하위 컴포넌트 조합)
+    [x] FE - App.jsx 라우트 추가 (/shop, ProtectedRoute + UserLayout)
+    [x] FE - CharacterPreview.jsx 상점 버튼 onClick → navigate('/shop') 연결 (SBI-H06 본 구현 완료)
+    [x] FE - 2-컬럼 반응형 레이아웃:
+           좌측(lg:w-[360px]): CharacterPanel (CharacterCanvas + 책갈피 + 슬롯 요약)
+           우측(flex-1): CategoryTabs + ShopItemGrid
+    [x] FE - 카테고리 탭: hair / outfit / hat / bag / wings (SHOP_CATALOG 키 기반)
+           ※ N08 명세의 "악세사리·배경·특수효과" 는 Phase 3 SH-10 범위로 분리
+    [x] FE - 디자인 시스템 적용: LIB.parchment·cream·ink·shelfLine·gold, 카드 hover lift,
+           버튼 3-state 애니메이션
+    [x] FE - 진입 시 preloadAllCharacterImages 호출 + LoadingState 표시
+    [x] FE - 페이지 푸터: LPC 에셋 크레딧 + CREDITS.md 링크
 - 우선순위: High
-- ※ ShopPage 200줄 초과 가능성 → 카테고리 탭, 아이템 카드, 캐릭터 패널 각각
-   components/shop/ 하위로 분리 권장 (CategoryTabs, ShopItemCard, CharacterPanel)
+- ※ ShopPage 154줄 — 200줄 제한 내. 5개 하위 컴포넌트(CharacterPanel, CategoryTabs,
+   ShopItemGrid, ShopItemCard, PurchaseConfirmModal)로 분리.
 
 
 [SBI-SH-08] (Phase 2) 아이템 카드 + 구매 확인 모달 + 장착 인터랙션
@@ -261,42 +289,37 @@ Phase 구조   : Phase 1 → Phase 2 → Phase 3 (순차 진행)
     I want to 아이템 카드를 클릭해 구매 / 장착 / 해제하고 구매 시 확인 모달로 차감 금액을 한 번 더 확인하고 싶다,
     So that 의도하지 않은 책갈피 소비를 방지하고 즉시 캐릭터에 결과를 반영할 수 있다.
 - 세부 작업:
-    [ ] FE - components/shop/ShopItemCard.jsx 신규 작성
-           (props: itemId, price, owned, equipped, onBuy, onEquip, onUnequip)
-    [ ] FE - 아이템 카드 상태별 UI:
-           미보유 + 충분한 책갈피 → "구매" 버튼 (LIB.gold)
-           미보유 + 부족 → "책갈피 부족" 비활성 버튼 (회색)
-           보유 + 미장착 → "장착" 버튼 (LIB.teal)
-           보유 + 장착 중 → "장착 중" 배지 + 해제 버튼 (필수 슬롯은 해제 버튼 미표시)
-    [ ] FE - 아이템 카드 썸네일 렌더링:
-           - 옵션 A: 정적 PNG 썸네일 별도 제작 (단순)
-           - 옵션 B(권장): 미니 CharacterCanvas로 _body+_head+_face+해당 아이템만 합성
-           → 모자/악세사리는 미니 캐릭터 위, 의상은 풀 캐릭터로 표시
-    [ ] FE - components/shop/PurchaseConfirmModal.jsx 신규 작성
-           (ConfirmModal 재사용 + 가격 차감 시각화: 보유 1000 → 700 화살표)
-    [ ] FE - 구매 흐름:
-           카드 클릭 → 모달 오픈 → 확인 → useCharacter.buyItem(itemId)
-           → 성공 토스트 + 자동 장착 옵션 안내
-    [ ] FE - 장착 흐름: 카드 클릭 → useCharacter.equipItem(slot, itemId)
-           → 캐릭터 패널 즉시 갱신 (equipped state 의존성으로 자동 리렌더)
-    [ ] FE - 해제 흐름: 선택 슬롯(hat/bag/wings)만 해제 가능
-           → equipItem(slot, null)
-    [ ] FE - 에러 처리: insufficient_bookmark / already_owned RPC 에러 메시지 토스트
+    [x] FE - components/shop/ShopItemCard.jsx 신규 작성 (144줄)
+           (props: itemId, category, price, owned, equipped, canAfford, onBuy, onEquip, onUnequip)
+    [x] FE - 카드 상태별 UI 4종 + 필수 슬롯 해제 버튼 미표시 처리
+    [x] FE - 미니 CharacterCanvas (size=96) 썸네일 렌더링 채택 (옵션 B)
+    [x] FE - components/shop/PurchaseConfirmModal.jsx 신규 작성 (71줄)
+           (책갈피 변화 시각화: 보유 1000 → 700)
+    [x] FE - 구매 흐름: 카드 클릭 → 모달 → 확인 → buyItem → 성공 토스트 + 자동 장착
+           (자동 장착은 equipItem 의 skipOwnedCheck 옵션으로 React 비동기 state 회피)
+    [x] FE - 장착/해제 흐름 (equipItem 호출, 필수 슬롯 차단)
+    [x] FE - 에러 처리: ERROR_MESSAGES 매핑으로 4종 RPC 에러 토스트 표시
+    [x] FE - 토스트 시스템: 페이지 내 임시 구현 (3초 자동 닫힘, 기존 토스트 시스템 부재)
 - 우선순위: Medium
-- ※ 옵션 B 채택 시 SH-05 CharacterCanvas 가 다중 인스턴스(아이템 카드 수만큼) 마운트
-   → 이미지 캐시 공유로 추가 네트워크 요청 없음, 성능 측정 후 가상 스크롤 검토
+- ※ useCharacter.equipItem 에 skipOwnedCheck 옵션 추가 (2026-05-16):
+   buyItem 직후 setOwned 가 비동기로 갱신되어 자동 장착 시 owned.has 검증이
+   이전 closure 값을 봐서 차단되던 이슈 방지. 일반 장착 경로는 검증 유지.
 
 
 ================================================================
 █ PHASE 3 — 통합 및 확장 (Integration & Extension)
 ================================================================
-목표      : 상점에서 만든 결과를 앱 다른 영역에 반영하고,
-            비-캐릭터 아이템(특수 효과)까지 확장.
-포함 SBI  : SH-09 (메인 화면 프리뷰 반영) / SH-10 (특수 효과 아이템)
-검증 기준 : 메인 화면 CharacterPreview 에 장착한 아이템이 보이고,
-            SBI-Q02(테스트 책 쌓기 애니메이션)가 effect_bookstack 보유자에게만
-            작동하는지 확인.
+목표      : 상점에서 만든 결과를 메인 화면 캐릭터 프리뷰에 반영.
+포함 SBI  : SH-09 (메인 화면 프리뷰 반영)
+            ※ SH-10 (특수 효과 아이템) 은 본 스프린트 범위에서 보류 (아래 결정 참조).
+검증 기준 : 메인 화면 CharacterPreview 에 상점에서 장착한 아이템이 즉시 보이는지 확인.
 선행 조건 : Phase 2 검증 기준 통과.
+
+진입 전 결정 (2026-05-17):
+  - SH-10 보류 — effect_bookstack 이 SBI-Q02(테스트 책 쌓기/무너지기 애니메이션) 본체에
+    의존하는데 Q02 는 다른 담당자 영역(2번 — 퀴즈 Lv2~4 + 퀴즈 개선) 의 작업.
+    Q02 완료 후 본 스프린트로 재진입 또는 별도 SBI 로 추진.
+  - 프로필 배경 / 스트릭 색상 항목도 SH-10 에 묶여 있으므로 함께 보류 (추가 에셋 필요·디자이너 협의 선행).
 ================================================================
 
 
@@ -310,20 +333,74 @@ Phase 구조   : Phase 1 → Phase 2 → Phase 3 (순차 진행)
     I want to 메인 화면 CharacterPreview에도 상점에서 장착한 아이템이 반영된 캐릭터가 보이길 원한다,
     So that 학습 화면에서도 내가 꾸민 캐릭터의 성취감을 항상 느낄 수 있다.
 - 세부 작업:
-    [ ] FE - components/CharacterPreview.jsx 수정:
-           기존 자리표시 아이콘 → CharacterCanvas (size={160}, direction=DOWN, frameIndex=0)
-    [ ] FE - useCharacter 훅 호출하여 equipped 전달
-    [ ] FE - 로딩 중일 때는 LoadingState 또는 placeholder 표시
-    [ ] FE - 책갈피(Bookmark 아이콘) 표시는 기존 useBookmark 유지
-    [ ] FE - 상점 진입 후 복귀 시 장착 변경 반영 확인
-           (useEffect 의존성 또는 페이지 이동 후 자동 refetch 흐름 검증)
+    [x] FE - components/CharacterPreview.jsx 수정:
+           GraduationCap 자리표시 → CharacterCanvas (size=144, direction=2(DOWN), frameIndex=0)
+    [x] FE - useCharacter() 훅 호출하여 equipped 전달
+    [x] FE - 로딩 중 placeholder (animate-pulse 블록) 표시 + imagesReady 게이트
+    [x] FE - 책갈피·전공·칭호 모달 등 기존 UI/기능 무변경 보존
+    [x] FE - 라우팅 복귀 시 자동 fetch 동작 확인
+           (useCharacter 의 [user?.id] 의존성으로 보장 — 코드 변경 불필요)
+    [x] FE - preloadAllCharacterImages(ITEMS) 마운트 시 호출
+           (모듈 스코프 imageCache 로 상점/메인 중복 호출 시 즉시 resolve)
 - 우선순위: Medium
-- ※ MainPage 마운트 시 useCharacter fetch — Realtime 구독은 도입하지 않음 (수동 갱신 충분)
+- ※ 9프레임 walk 사이클은 미적용 — 메인 화면 정적 정체성과 일관성 유지 (정지 프레임)
+- ※ CharacterPreview.jsx 280줄 — 200줄 권장선 초과지만 300줄 강제선 이내. 본 SBI 범위 외 리팩토링 보류.
+- ※ 2026-05-17: 사용자 검증 후 "정적 스티커 같다" 피드백 → SBI-SH-11 로 후속 개선 진행 (idle 호흡 + 방향키 이동 + 배경 교체).
+
+
+[SBI-SH-11] (Phase 3 후속) 메인 캐릭터 동적 인터랙션
+- User Story:
+    As a 로그인한 사용자,
+    I want to 메인 화면 캐릭터가 평소 대기 모션이 있고 방향키로 박스 안을 움직일 수 있으며 추후 배경 교체가 가능하길 원한다,
+    So that 정적 스티커 같은 인상에서 벗어나 살아있는 캐릭터의 성취감을 느낄 수 있다.
+- 세부 작업:
+    [ ] FE - components/CharacterStage.jsx 신규 작성
+           (idle 호흡 토글 + 방향키 이동 + 배경 레이어 + 포커스 게이트)
+    [ ] FE - components/CharacterCanvas.jsx 에 variant prop 추가 ('framed' | 'bare')
+           이중 테두리 방지 — 부모(CharacterStage) 가 배경/프레임 책임질 때 'bare' 사용
+    [ ] FE - constants/character.js 에 BACKGROUNDS 추가
+           { default: null } 만 정의 — 추후 스프라이트 받으면 키 추가
+    [ ] FE - Idle 호흡 애니메이션: walk row frame 0↔1 핑퐁 ~700ms
+           (LPC 진짜 idle 행은 1프레임·1방향이라 사용 불가, 시뮬레이션)
+    [ ] FE - 방향키 이동 로직:
+           pos / direction / heldKeys / frame state, RAF 루프, 90 px/sec, 120ms walk frame advance
+           대각선 불가, heldKeys Set 의 마지막 키 우선 (stack)
+           경계 clamp, isMoving=false 복귀 시 idle 호흡 재개 + 마지막 방향 유지
+    [ ] FE - 포커스 게이트: tabIndex={0}, onFocus/onBlur 로 키 핸들러 등록·해제
+           focus 시 golden outline 링 (LIB.gold 2px)
+    [ ] FE - components/CharacterPreview.jsx 수정:
+           144px 박스 → 240~260px 박스로 확장, 내부 CharacterCanvas 80~96px
+           기존 인라인 캔버스 블록을 <CharacterStage equipped={equipped} backgroundId="default" /> 로 치환
+    [ ] FE - 책 카드 전체 레이아웃 영향 점검 (필요 시 책 카드 너비 조정)
+- 우선순위: Medium
+- ※ combat_idle 행(y=2688) 4방향 idle 도입은 별도 SBI (스프라이트 인스펙터로 frame 수 확인 후)
 
 
 ----------------------------------------------------------------
 [3-2. 확장 - 특수 효과 / 배경]
 ----------------------------------------------------------------
+
+[SBI-SH-12] (Phase 3 후속) 상점 미리보기 정확도 개선
+- User Story:
+    As a 로그인한 사용자,
+    I want to 상점 카드 썸네일이 내 현재 장착 상태에 그 아이템만 교체한 모습을 보여주고, 가방은 뒷모습으로 보이며, 캐릭터 패널의 시점을 상하좌우 전환할 수 있길 원한다,
+    So that 실제 장착 결과를 정확히 비교하며 구매 결정을 내릴 수 있다.
+- 세부 작업:
+    [ ] FE - constants/character.js 에 CATEGORY_DIRECTION 추가
+           { hair: 2, outfit: 2, hat: 2, bag: 0, wings: 2 }
+    [ ] FE - components/shop/ShopItemCard.jsx 수정:
+           buildPreviewEquipped(itemId, slot, userEquipped) → { ...userEquipped, [slot]: itemId }
+           direction = CATEGORY_DIRECTION[category] ?? 2 적용
+           useMemo deps: [itemId, category, userEquipped]
+    [ ] FE - components/shop/ShopItemGrid.jsx 수정: userEquipped prop 수용·전달
+    [ ] FE - pages/ShopPage.jsx 수정: <ShopItemGrid userEquipped={equipped} /> 1줄 변경
+    [ ] FE - components/shop/CharacterPanel.jsx 에 4방향 D-pad UI 추가:
+           lucide ChevronUp/Left/Right/Down, 활성 버튼 LIB.gold 하이라이트
+           useState(2) 로컬 direction 상태, CharacterCanvas direction prop 전달
+           tabIndex={0} + 화살표 키 핸들러로 방향 전환 동시 지원
+           기존 9프레임 walk 사이클 그대로 유지
+- 우선순위: Medium
+- ※ 가방만 UP (뒷모습) — wings 는 bg+fg 양면 렌더라 DOWN 유지 (얼굴 보이는 정면)
 
 [SBI-SH-10] (Phase 3) 특수 효과 아이템 (책 쌓기·스트릭 색상·프로필 배경)
 - User Story:

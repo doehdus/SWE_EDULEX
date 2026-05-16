@@ -1,10 +1,15 @@
-import { useState } from 'react'
-import { Bookmark, ShoppingBag, GraduationCap, Check } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Bookmark, ShoppingBag, Check } from 'lucide-react'
 import { useMajor } from '../context/MajorContext'
 import { useAuth } from '../context/AuthContext'
 import { useBookmark } from '../hooks/useBookmark'
+import { useCharacter } from '../hooks/useCharacter'
 import { supabase } from '../utils/supabase'
 import { LIB } from '../constants/theme'
+import { ITEMS } from '../constants/character'
+import { preloadAllCharacterImages } from '../utils/characterImages'
+import CharacterStage from './CharacterStage'
 
 const MAJORS = ['컴퓨터과학', '경영학', '역사학', '의학', '법학', '심리학']
 
@@ -24,9 +29,21 @@ export default function CharacterPreview() {
   const { profile } = useAuth()
   const { selectedMajors, updateMajors } = useMajor()
   const bookmark = useBookmark()
+  const { equipped, loading: charLoading } = useCharacter()
+  const navigate = useNavigate()
   const [showMajorModal, setShowMajorModal] = useState(false)
   const [showTitleModal, setShowTitleModal] = useState(false)
   const [tempMajors, setTempMajors] = useState([])
+  const [imagesReady, setImagesReady] = useState(false)
+
+  // 스프라이트 시트 모듈 캐시 — 이미 상점에서 preload 됐다면 즉시 resolve.
+  useEffect(() => {
+    let alive = true
+    preloadAllCharacterImages(ITEMS).then(() => {
+      if (alive) setImagesReady(true)
+    })
+    return () => { alive = false }
+  }, [])
 
   const openMajorModal = () => {
     setTempMajors([...selectedMajors])
@@ -89,26 +106,22 @@ export default function CharacterPreview() {
           </button>
         </div>
 
-        {/* 중앙: 캐릭터 */}
+        {/* 중앙: 캐릭터 (CharacterStage — 외곽 박스 fill) */}
         <div
-          className="flex-1 flex items-center justify-center my-3 mx-5 rounded-xl relative"
-          style={{ background: 'rgba(255,255,255,0.08)' }}
+          className="flex-1 my-3 mx-4 rounded-2xl relative overflow-hidden"
+          style={{
+            border: `3px solid ${LIB.gold}`,
+            boxShadow: `0 0 20px rgba(201,168,76,0.4)`,
+          }}
         >
-          {/* 장식 테두리 */}
-          <div
-            className="absolute inset-2 rounded-xl pointer-events-none"
-            style={{ border: `1px solid ${LIB.gold}`, opacity: 0.4 }}
-          />
-          <div
-            className="w-28 h-28 rounded-full flex items-center justify-center shadow-xl"
-            style={{
-              background: LIB.parchment,
-              border: `3px solid ${LIB.gold}`,
-              boxShadow: `0 0 20px rgba(201,168,76,0.4)`,
-            }}
-          >
-            <GraduationCap size={64} strokeWidth={1.2} style={{ color: LIB.wood }} />
-          </div>
+          {imagesReady && !charLoading ? (
+            <CharacterStage equipped={equipped} fill charScale={0.38} />
+          ) : (
+            <div
+              className="w-full h-full animate-pulse"
+              style={{ background: 'rgba(196,168,130,0.25)' }}
+            />
+          )}
         </div>
 
         {/* 하단: 닉네임, 책갈피, 전공, 상점 */}
@@ -173,6 +186,7 @@ export default function CharacterPreview() {
             {/* 상점 */}
             <div className="px-4 py-3 flex items-center justify-center">
               <button
+                onClick={() => navigate('/shop')}
                 className="w-full text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1.5 transition hover:opacity-70"
                 style={{ background: 'rgba(245,237,224,0.12)', color: LIB.parchment, border: '1px solid rgba(245,237,224,0.25)' }}
               >
