@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useReward } from '../context/RewardContext'
 import {
   DEFAULT_EQUIPPED,
   ITEM_SLOT,
@@ -9,6 +10,7 @@ import {
 
 export function useCharacter() {
   const { user, fetchProfile } = useAuth()
+  const reward = useReward()
   const [owned, setOwned] = useState(new Set())
   const [equipped, setEquipped] = useState(DEFAULT_EQUIPPED)
   const [loading, setLoading] = useState(true)
@@ -91,13 +93,18 @@ export function useCharacter() {
       if (data?.owned_items) setOwned(new Set(data.owned_items))
       if (fetchProfile) await fetchProfile(user.id)
 
+      // 구매 시 책갈피는 차감되므로 토스트는 띄우지 않고, 신규 칭호만 큐에 푸시.
+      if (Array.isArray(data?.earned_titles) && data.earned_titles.length > 0) {
+        reward.pushFromRpcResponse({ earned_titles: data.earned_titles })
+      }
+
       return {
         ok: true,
         newBookmark: data?.new_bookmark,
         ownedItems: data?.owned_items,
       }
     },
-    [user?.id, fetchProfile],
+    [user?.id, fetchProfile, reward],
   )
 
   return {

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { MajorProvider } from './context/MajorContext'
+import { RewardProvider } from './context/RewardContext'
 import { ProtectedRoute, AdminRoute, PublicOnlyRoute } from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
 
@@ -15,6 +16,7 @@ import QuizPage from './pages/QuizPage'
 import DashboardPage from './pages/DashboardPage'
 import AdminWordbookPage from './pages/AdminWordbookPage'
 import ShopPage from './pages/ShopPage'
+import TitleTestPage from './pages/TitleTestPage' // TODO(임시): Phase 3 검증 후 라우트와 함께 제거
 
 function UserLayout({ children }) {
   return (
@@ -30,6 +32,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <MajorProvider>
+         <RewardProvider>
           <Routes>
             {/* 공개 라우트 */}
             <Route path="/landing" element={<PublicOnlyRoute><LandingPage /></PublicOnlyRoute>} />
@@ -69,6 +72,13 @@ export default function App() {
               </ProtectedRoute>
             } />
 
+            {/* TODO(임시): 칭호 시스템 Phase 3 검증용 — 검증 완료 후 본 라우트 제거 */}
+            <Route path="/title-test" element={
+              <ProtectedRoute>
+                <UserLayout><TitleTestPage /></UserLayout>
+              </ProtectedRoute>
+            } />
+
             {/* 관리자 보호 라우트 */}
             <Route path="/admin" element={
               <AdminRoute>
@@ -76,6 +86,7 @@ export default function App() {
               </AdminRoute>
             } />
           </Routes>
+         </RewardProvider>
         </MajorProvider>
       </AuthProvider>
     </BrowserRouter>

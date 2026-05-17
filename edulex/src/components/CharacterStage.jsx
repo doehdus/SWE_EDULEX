@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import CharacterCanvas from './CharacterCanvas'
+import TitlePlate from './title/TitlePlate'
 import { BACKGROUNDS } from '../constants/character'
 import { LIB } from '../constants/theme'
 
@@ -24,6 +25,7 @@ export default function CharacterStage({
   charScale = 0.33,
   fill = false,
   backgroundId = 'default',
+  activeTitle = null,
 }) {
   const containerRef = useRef(null)
   const heldKeys = useRef(new Set())
@@ -199,6 +201,7 @@ export default function CharacterStage({
           frameIndex={frame}
           variant="bare"
         />
+        {activeTitle && <TitlePlate titleKey={activeTitle} charSize={charSize} />}
       </div>
     </div>
   )

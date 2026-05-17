@@ -44,7 +44,7 @@ export default function CharacterPanel({ equipped, bookmark }) {
         boxShadow: '0 2px 8px rgba(92,58,30,0.08)',
       }}
     >
-      {/* 캐릭터 */}
+      {/* 캐릭터 (상점에서는 명패 미표시) */}
       <div className="flex justify-center">
         <CharacterCanvas
           equipped={equipped}

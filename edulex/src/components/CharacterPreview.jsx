@@ -5,25 +5,15 @@ import { useMajor } from '../context/MajorContext'
 import { useAuth } from '../context/AuthContext'
 import { useBookmark } from '../hooks/useBookmark'
 import { useCharacter } from '../hooks/useCharacter'
-import { supabase } from '../utils/supabase'
 import { LIB } from '../constants/theme'
 import { ITEMS } from '../constants/character'
+import { TITLES as TITLE_CATALOG, LOCKED_CATEGORIES } from '../constants/titles'
 import { preloadAllCharacterImages } from '../utils/characterImages'
 import CharacterStage from './CharacterStage'
+import TitleBadge from './title/TitleBadge'
+import TitleSelectModal from './title/TitleSelectModal'
 
 const MAJORS = ['컴퓨터과학', '경영학', '역사학', '의학', '법학', '심리학']
-
-const TITLES = [
-  '단어 사냥꾼',
-  '어휘의 주인',
-  '암기 대장',
-  '언어 술사',
-  '지식 창고',
-  '단어 수집가',
-  '어원 탐험가',
-  '언어의 고수',
-  '불멸의 노력파',
-]
 
 export default function CharacterPreview() {
   const { profile } = useAuth()
@@ -63,12 +53,6 @@ export default function CharacterPreview() {
     setShowMajorModal(false)
   }
 
-  const saveTitle = async (title) => {
-    await supabase.from('users').update({ active_title: title }).eq('id', profile.id)
-    profile.active_title = title
-    setShowTitleModal(false)
-  }
-
   return (
     <>
       {/* 책 표지 형태의 캐릭터 카드 */}
@@ -97,13 +81,23 @@ export default function CharacterPreview() {
           >
             LV. {profile?.level ?? 1}
           </span>
-          <button
-            onClick={() => setShowTitleModal(true)}
-            className="text-xs font-semibold px-3 py-1 rounded-full border transition hover:opacity-70"
-            style={{ color: LIB.parchment, borderColor: 'rgba(245,237,224,0.35)', background: 'rgba(245,237,224,0.12)' }}
-          >
-            {profile?.active_title ?? '칭호 없음'}
-          </button>
+          {profile?.active_title && TITLE_CATALOG[profile.active_title] &&
+           !LOCKED_CATEGORIES.has(TITLE_CATALOG[profile.active_title].category) ? (
+            <TitleBadge
+              titleKey={profile.active_title}
+              owned
+              size="sm"
+              onClick={() => setShowTitleModal(true)}
+            />
+          ) : (
+            <button
+              onClick={() => setShowTitleModal(true)}
+              className="text-xs font-semibold px-3 py-1 rounded-full border transition hover:opacity-70"
+              style={{ color: LIB.parchment, borderColor: 'rgba(245,237,224,0.35)', background: 'rgba(245,237,224,0.12)' }}
+            >
+              칭호 선택
+            </button>
+          )}
         </div>
 
         {/* 중앙: 캐릭터 (CharacterStage — 외곽 박스 fill) */}
@@ -115,7 +109,12 @@ export default function CharacterPreview() {
           }}
         >
           {imagesReady && !charLoading ? (
-            <CharacterStage equipped={equipped} fill charScale={0.38} />
+            <CharacterStage
+              equipped={equipped}
+              fill
+              charScale={0.38}
+              activeTitle={profile?.active_title ?? null}
+            />
           ) : (
             <div
               className="w-full h-full animate-pulse"
@@ -198,40 +197,8 @@ export default function CharacterPreview() {
         </div>
       </div>
 
-      {/* 칭호 선택 모달 */}
-      {showTitleModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div
-            className="rounded-2xl p-6 w-80 shadow-2xl"
-            style={{ background: LIB.cream, border: `1px solid ${LIB.shelfLine}` }}
-          >
-            <h3 className="text-lg font-bold mb-1" style={{ color: LIB.ink }}>칭호 선택</h3>
-            <p className="text-xs mb-4" style={{ color: LIB.inkLight }}>사용할 칭호를 선택하세요.</p>
-            <div className="space-y-2">
-              {TITLES.map(title => (
-                <button
-                  key={title}
-                  onClick={() => saveTitle(title)}
-                  className="w-full text-left px-4 py-3 rounded-xl text-sm font-medium border transition"
-                  style={profile?.active_title === title
-                    ? { background: LIB.wood, color: LIB.parchment, borderColor: LIB.wood }
-                    : { background: 'white', color: LIB.ink, borderColor: LIB.shelfLine }
-                  }
-                >
-                  {profile?.active_title === title && <Bookmark size={12} fill="currentColor" className="inline mr-1" style={{ color: LIB.goldLight }} />}{title}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setShowTitleModal(false)}
-              className="w-full mt-4 py-2.5 text-sm rounded-xl border transition hover:opacity-70"
-              style={{ color: LIB.inkLight, borderColor: LIB.shelfLine }}
-            >
-              취소
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 칭호 선택 모달 — T08 신규 카탈로그 기반 */}
+      {showTitleModal && <TitleSelectModal onClose={() => setShowTitleModal(false)} />}
 
       {/* 전공 선택 모달 */}
       {showMajorModal && (
