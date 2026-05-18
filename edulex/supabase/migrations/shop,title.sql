@@ -1,4 +1,222 @@
 -- ================================================================
+-- Migration: shop schema (SBI-SH-02)
+-- 목적: 상점 시스템 Phase 1 — users 테이블에 캐릭터 보유/장착 아이템 컬럼 추가
+-- 범위: 보유/장착 상태 저장만 담당. 카탈로그 정의는 클라이언트 상수
+--       (constants/character.js)로 관리. 구매 RPC(purchase_item)는 Phase 2.
+--
+-- RLS 검증 결과: 기존 users RLS 정책은 row-level 조건만 사용 → 새 컬럼 자동 커버.
+--   - users_select : USING (auth.uid() = id)        -- 컬럼 화이트리스트 아님
+--   - users_update : USING (auth.uid() = id)        -- 컬럼 화이트리스트 아님
+--   따라서 owned_items / equipped_items 에 대한 별도 정책 추가 불필요.
+-- ================================================================
+
+BEGIN;
+
+-- ----------------------------------------------------------------
+-- 1. 컬럼 추가
+-- ----------------------------------------------------------------
+
+-- 보유 아이템 목록 (캐릭터 자산 ID 배열)
+-- 기본 보유: 헤어 'bedhead', 의상 'outfit_basic'
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS owned_items text[] NOT NULL
+    DEFAULT ARRAY['bedhead', 'outfit_basic'];
+
+-- 슬롯별 장착 아이템 (hair/outfit 은 필수, hat/bag/wings 는 선택)
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS equipped_items jsonb NOT NULL
+    DEFAULT '{"hair":"bedhead","outfit":"outfit_basic","hat":null,"bag":null,"wings":null}'::jsonb;
+
+-- ----------------------------------------------------------------
+-- 2. 기존 레코드 백필
+-- ALTER ... ADD COLUMN ... DEFAULT 는 기존 행에도 DEFAULT 적용되지만,
+-- 이전 마이그레이션이 부분적으로 적용된 환경을 대비해 명시적으로 한 번 더 백필.
+-- ----------------------------------------------------------------
+
+UPDATE public.users
+SET owned_items = ARRAY['bedhead', 'outfit_basic']
+WHERE owned_items IS NULL
+   OR array_length(owned_items, 1) IS NULL;
+
+UPDATE public.users
+SET equipped_items = '{"hair":"bedhead","outfit":"outfit_basic","hat":null,"bag":null,"wings":null}'::jsonb
+WHERE equipped_items IS NULL
+   OR equipped_items->>'hair' IS NULL
+   OR equipped_items->>'outfit' IS NULL;
+
+-- ----------------------------------------------------------------
+-- 3. 무결성 제약
+-- 필수 슬롯(hair, outfit)이 NULL 인 상태로 저장되는 것을 차단한다.
+-- jsonb 구조 자체는 자유 형식이지만, 핵심 슬롯 누락은 캐릭터 렌더 실패로 이어지므로
+-- 단순 CHECK 제약으로 1차 방어한다. (장착 아이템이 owned_items 에 포함되는지 등의
+-- 비즈니스 무결성은 Phase 2 의 purchase_item / equip_item RPC 에서 검증)
+-- ----------------------------------------------------------------
+
+ALTER TABLE public.users
+  DROP CONSTRAINT IF EXISTS users_equipped_items_required_slots_chk;
+
+ALTER TABLE public.users
+  ADD CONSTRAINT users_equipped_items_required_slots_chk
+  CHECK (
+    equipped_items ? 'hair'
+    AND equipped_items ? 'outfit'
+    AND equipped_items->>'hair' IS NOT NULL
+    AND equipped_items->>'outfit' IS NOT NULL
+  );
+
+COMMIT;
+
+-- ================================================================
+-- Audit Checklist (edulex-be.md §10 Step 5)
+--  [x] RLS — public.users 는 이미 RLS 활성화 상태이며 row-level 정책이 새 컬럼 자동 커버
+--  [x] SERVICE_ROLE_KEY 노출 없음 (마이그레이션 스크립트만 수정)
+--  [x] Edge Function 변경 없음 (OPTIONS preflight 해당 없음)
+--  [x] Groq 응답 검증 해당 없음
+--  [x] bookmark 변경 없음 (RPC 경유 원칙 유지)
+--  [x] verify_jwt 변경 없음
+--  [x] 인덱스: 단일 사용자 행 조회용 컬럼이므로 별도 인덱스 불필요 — 추가하지 않음
+-- ================================================================
+
+
+
+
+
+
+
+-- ================================================================
+-- Migration: shop purchase RPC (SBI-SH-03)
+-- 목적: 상점 시스템 Phase 2 — 아이템 구매를 원자적으로 처리하는 purchase_item RPC
+--       및 구매 이력 식별용 bookmark_logs.note 컬럼 추가.
+--
+-- 보안 모델:
+--   - 가격은 RPC 내부에 하드코딩 (constants/character.js 미러링).
+--     클라이언트가 보낸 가격을 신뢰하면 0원 구매 공격 가능 → p_item_id 만 받는다.
+--   - SECURITY DEFINER + auth.uid() = p_user_id 호출자 검증.
+--   - 단일 plpgsql 함수 본문 = 단일 트랜잭션 → UPDATE/INSERT 원자성 보장.
+--
+-- bookmark_logs.reason CHECK 제약: 없음 (init 마이그레이션 기준 `reason text not null` 만 존재).
+-- 따라서 'shop_purchase' 추가에 별도 제약 조정 불필요.
+-- ================================================================
+
+BEGIN;
+
+-- ----------------------------------------------------------------
+-- 1. bookmark_logs.note 컬럼 추가
+-- 구매 이력 식별용. 'shop_purchase' reason 의 경우 item_id 가 저장된다.
+-- 다른 reason(attendance, test_reward)은 ref_id 로 식별 가능하므로 NULL.
+-- ----------------------------------------------------------------
+
+ALTER TABLE public.bookmark_logs
+  ADD COLUMN IF NOT EXISTS note text;
+
+-- ----------------------------------------------------------------
+-- 2. purchase_item RPC
+-- ----------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.purchase_item(
+  p_user_id uuid,
+  p_item_id text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_price        integer;
+  v_owned        text[];
+  v_bookmark     integer;
+  v_new_bookmark integer;
+  v_new_owned    text[];
+BEGIN
+  -- 호출자 검증 (SECURITY DEFINER 필수)
+  IF auth.uid() IS DISTINCT FROM p_user_id THEN
+    RAISE EXCEPTION 'unauthorized';
+  END IF;
+
+  -- 가격 매핑 (constants/character.js 미러링)
+  -- 0원 아이템(bedhead, outfit_basic)은 기본 지급이므로 구매 불가 → 아래에서 차단.
+  v_price := CASE p_item_id
+    WHEN 'bedhead'         THEN 0
+    WHEN 'outfit_basic'    THEN 0
+    WHEN 'idol'            THEN 3000
+    WHEN 'long'            THEN 3000
+    WHEN 'bonnie'          THEN 3000
+    WHEN 'crown'           THEN 3000
+    WHEN 'backpack'        THEN 3000
+    WHEN 'outfit_formal'   THEN 5000
+    WHEN 'outfit_fashion2' THEN 5000
+    WHEN 'outfit_armor'    THEN 9000
+    WHEN 'jetpack'         THEN 9000
+    WHEN 'bat_wings'       THEN 9000
+    ELSE NULL
+  END;
+
+  -- 유효성 검증 (순서 중요: 존재하지 않는 아이템 → 이미 보유 → 잔액 부족)
+  IF v_price IS NULL OR v_price = 0 THEN
+    RAISE EXCEPTION 'invalid_item';
+  END IF;
+
+  SELECT owned_items, bookmark
+    INTO v_owned, v_bookmark
+    FROM public.users
+   WHERE id = p_user_id;
+
+  IF p_item_id = ANY(v_owned) THEN
+    RAISE EXCEPTION 'already_owned';
+  END IF;
+
+  IF v_bookmark < v_price THEN
+    RAISE EXCEPTION 'insufficient_bookmark';
+  END IF;
+
+  -- 원자적 차감 + 보유 추가
+  UPDATE public.users
+     SET bookmark    = bookmark - v_price,
+         owned_items = array_append(owned_items, p_item_id)
+   WHERE id = p_user_id
+  RETURNING bookmark, owned_items
+       INTO v_new_bookmark, v_new_owned;
+
+  -- 구매 이력 기록
+  -- reason='shop_purchase', ref_id=NULL, note=item_id (사용자 결정 2026-05-16)
+  INSERT INTO public.bookmark_logs (user_id, change_amount, reason, ref_id, note)
+  VALUES (p_user_id, -v_price, 'shop_purchase', NULL, p_item_id);
+
+  RETURN jsonb_build_object(
+    'new_bookmark', v_new_bookmark,
+    'owned_items',  v_new_owned
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.purchase_item(uuid, text) TO authenticated;
+
+COMMIT;
+
+-- ================================================================
+-- Audit Checklist (edulex-be.md §10 Step 5)
+--  [x] RLS — bookmark_logs.note 컬럼 추가만, 기존 row-level 정책이 자동 커버
+--  [x] SERVICE_ROLE_KEY 노출 없음
+--  [x] Edge Function 변경 없음 (OPTIONS preflight 해당 없음)
+--  [x] Groq 응답 검증 해당 없음
+--  [x] bookmark 변경 — RPC 경유 (purchase_item) 원칙 유지
+--  [x] verify_jwt 변경 없음
+--  [x] SECURITY DEFINER — auth.uid() = p_user_id 호출자 검증 포함
+--  [x] GRANT EXECUTE TO authenticated (public 미부여)
+--  [x] 가격 하드코딩 — 클라이언트 입력값 미신뢰 (0원 구매 공격 방지)
+--  [x] 인덱스: bookmark_logs.note 는 식별용이며 조회 필터 컬럼 아님 → 인덱스 불필요
+-- ================================================================
+
+
+
+
+
+
+
+
+
+
+-- ================================================================
 -- Title System — Phase 1 + Phase 2 통합 번들 (단일 적용용)
 -- ----------------------------------------------------------------
 -- 합쳐진 마이그레이션:
