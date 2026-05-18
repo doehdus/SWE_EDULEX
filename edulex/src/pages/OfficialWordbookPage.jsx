@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Search, GraduationCap, Hash, X } from 'lucide-react'
 import { supabase } from '../utils/supabase'
@@ -269,19 +268,23 @@ function WordModal({ word, idx, total, color, flipDir, pageFlip, onPrev, onNext,
 
           {/* 의미 */}
           <div className="space-y-3">
-            {(word.general_meaning || word.general_example) && (
-              <div className="rounded-2xl p-4" style={{ background: color.accent + '22', border: `1px solid ${color.accent}` }}>
-                <p className="text-[9px] font-black uppercase tracking-[0.18em] mb-1.5" style={{ color: color.spine + 'aa' }}>일반적 의미</p>
-                {word.general_meaning && (
-                  <p className="text-sm font-semibold leading-relaxed select-text" style={{ color: '#2d1b00' }}>{word.general_meaning}</p>
-                )}
-                {word.general_example && (
-                  <p className="text-xs mt-2 italic leading-relaxed pl-3 border-l-2 select-text" style={{ color: '#8b6e4e', borderColor: color.accent }}>
-                    "{word.general_example}"
-                  </p>
-                )}
-              </div>
-            )}
+            <div className="rounded-2xl p-4" style={{ background: color.accent + '22', border: `1px solid ${color.accent}` }}>
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] mb-1.5" style={{ color: color.spine + 'aa' }}>일반적 의미</p>
+              {word.general_meaning ? (
+                <p className="text-sm font-semibold leading-relaxed select-text" style={{ color: '#2d1b00' }}>{word.general_meaning}</p>
+              ) : (
+                <p className="text-sm font-semibold leading-relaxed" style={{ color: '#b09070' }}>—</p>
+              )}
+              {word.general_example ? (
+                <p className="text-xs mt-2 italic leading-relaxed pl-3 border-l-2 select-text" style={{ color: '#8b6e4e', borderColor: color.accent }}>
+                  "{word.general_example}"
+                </p>
+              ) : (
+                <p className="text-xs mt-2 italic pl-3 border-l-2" style={{ color: '#c4a882', borderColor: color.accent + '60' }}>
+                  예문 데이터 준비 중
+                </p>
+              )}
+            </div>
             <div className="rounded-2xl p-4" style={{ background: color.spine + '08', border: `1px solid ${color.spine}28` }}>
               <p className="text-[9px] font-black uppercase tracking-[0.18em] mb-1.5" style={{ color: color.spine }}>전공 의미</p>
               <p className="text-sm font-bold leading-relaxed select-text" style={{ color: '#2d1b00' }}>{word.major_meaning}</p>
