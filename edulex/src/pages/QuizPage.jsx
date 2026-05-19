@@ -463,7 +463,6 @@ export default function QuizPage() {
   const [answers, setAnswers]       = useState([])
   const [chosen, setChosen]         = useState(null)
   const [saving, setSaving]         = useState(false)
-  const [correctWordIds, setCorrectWordIds] = useState([])
   const [quizResult, setQuizResult] = useState(null)
   const [noWordsModal, setNoWordsModal] = useState(false)
   const [wbLevelCounts, setWbLevelCounts] = useState({})
@@ -560,7 +559,6 @@ export default function QuizPage() {
       return
     }
 
-    setCorrectWordIds([])
     setQuizResult(null)
     setQuestions(buildQuestions(allWords))
     setAnswers([])
@@ -574,10 +572,6 @@ export default function QuizPage() {
     setChosen(choice)
     const isCorrect   = choice === questions[current].answer
     const nextAnswers = [...answers, { chosen: choice, correct: isCorrect }]
-
-    if (isCorrect) {
-      setCorrectWordIds(prev => [...prev, questions[current].id])
-    }
 
     setTimeout(() => {
       setChosen(null)
@@ -593,8 +587,11 @@ export default function QuizPage() {
   const finishQuiz = async (finalAnswers) => {
     setSaving(true)
     setAnswers(finalAnswers)
-    const correctCount = finalAnswers.filter(a => a.correct).length
-    const score        = Math.round((correctCount / questions.length) * 100)
+    const correctCount   = finalAnswers.filter(a => a.correct).length
+    const score          = Math.round((correctCount / questions.length) * 100)
+    const correctWordIds = finalAnswers
+      .map((a, i) => a.correct ? questions[i].id : null)
+      .filter(Boolean)
 
     const params = {
       p_user_id:       user.id,
