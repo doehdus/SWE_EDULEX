@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
 
-const todayStr = () => new Date().toISOString().split('T')[0]
+const toLocalDateStr = (d = new Date()) => {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const todayStr = () => toLocalDateStr(new Date())
 
 export function useMainPage() {
   const { user } = useAuth()
@@ -46,7 +53,7 @@ export function useMainPage() {
       .select('date')
       .eq('user_id', user.id)
       .order('date', { ascending: false })
-      .limit(30)
+      .limit(365)
 
     if (!data || data.length === 0) { setStreak(0); return }
 
@@ -97,17 +104,18 @@ export function useMainPage() {
     setLoading(false)
   }
 
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
+  const currentWeekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
-    d.setDate(d.getDate() - (6 - i))
-    return d.toISOString().split('T')[0]
+    const day = d.getDay()
+    d.setDate(d.getDate() - day + i)
+    return toLocalDateStr(d)
   })
 
   return {
     wordbookCount, setWordbookCount,
     streak, checkedToday, loading, rewardMsg,
     recentWordbook, recentQuiz,
-    last7Days, today: todayStr,
+    currentWeekDays, today: todayStr,
     attendedDates,
     handleAttendance,
   }
