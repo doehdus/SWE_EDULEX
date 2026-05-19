@@ -318,8 +318,7 @@ export default function PdfUploadBar({ onComplete, wordbookCount }) {
   const [errorMsg, setErrorMsg] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [extractedWords, setExtractedWords] = useState([])
-
-  const isDisabled = wordbookCount >= 2
+  const isDisabled = false
 
   const processFile = async (file) => {
     if (!file) return
@@ -421,13 +420,11 @@ export default function PdfUploadBar({ onComplete, wordbookCount }) {
           <div className="flex-1 min-w-0">
             {status === 'idle' && (
               <>
-                <p className="text-sm font-bold" style={{ color: isDisabled ? LIB.inkLight : LIB.ink }}>
-                  {isDisabled ? '서가가 가득 찼습니다' : 'PDF로 단어장 만들기'}
+                <p className="text-sm font-bold" style={{ color: LIB.ink }}>
+                  PDF로 단어장 만들기
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: LIB.inkLight }}>
-                  {isDisabled
-                    ? '기존 단어장을 삭제하면 새로 추가할 수 있습니다.'
-                    : `클릭하거나 PDF를 드래그하세요 · 서가 공간 ${2 - wordbookCount}칸 남음`}
+                  클릭하거나 PDF를 드래그하여 업로드하세요.
                 </p>
               </>
             )}

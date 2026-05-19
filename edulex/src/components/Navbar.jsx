@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Library, NotebookText, FlaskConical, BarChart2, LogOut } from 'lucide-react'
+import { Library, NotebookText, FlaskConical, BarChart2, LogOut, Users } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { LIB } from '../constants/theme'
 import logo from '../assets/logo.png'
@@ -24,6 +24,7 @@ const MENU_ITEMS = [
   { path: '/wordbook/my',       label: '나만의 단어장', icon: <NotebookText size={18} strokeWidth={1.8} /> },
   { path: '/quiz',              label: '테스트',       icon: <FlaskConical size={18} strokeWidth={1.8} /> },
   { path: '/dashboard',        label: '학습 현황',    icon: <BarChart2 size={18} strokeWidth={1.8} /> },
+  { path: '/community',        label: '커뮤니티',     icon: <Users size={18} strokeWidth={1.8} /> },
 ]
 
 export default function Navbar() {
