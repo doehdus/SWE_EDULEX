@@ -7,6 +7,7 @@ import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
 import { LIB, BOOK_COLORS } from '../constants/theme'
 import { useWordbookAchievement } from '../hooks/useWordbookAchievement'
+import { QUIZ_BOOK_ANIM_ID } from '../constants/character'
 
 // ── 유틸 ──────────────────────────────────────────────────────────
 
@@ -298,7 +299,79 @@ function SelectView({ wordbooks, selectedWb, onSelect, onStart, activeLevel, onL
 
 // ── 퀴즈 화면 ─────────────────────────────────────────────────────
 
-function QuizView({ question, current, total, chosen, onChoose, activeLevel }) {
+// ── 책 낙하/쌓기 애니메이션 (Q02) ────────────────────────────────
+
+// 폭발 방향 벡터 — 하단 기준으로 방사형 (index 0=하단 책부터 먼저 폭발)
+const EXPLODE_VECTORS = [
+  { tx: '-80vw', ty: '-15vh', ts: 2.5, tr: '-130deg' },
+  { tx: '-55vw', ty: '-65vh', ts: 2,   tr:   '90deg' },
+  { tx: '-15vw', ty: '-85vh', ts: 2,   tr:  '-70deg' },
+  { tx:  '30vw', ty: '-75vh', ts: 2,   tr:  '110deg' },
+  { tx:  '60vw', ty: '-35vh', ts: 2.5, tr:  '-95deg' },
+  { tx: '-35vw', ty: '-90vh', ts: 2,   tr:   '60deg' },
+]
+
+function BookStackAnimation({ count, isToppling, total }) {
+  if (count === 0) return null
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 750
+  const bookH = Math.max(22, Math.min(65, Math.floor(vh * 0.52 / Math.max(total, 1))))
+  const bookW = Math.round(bookH * 3.8)
+  const comboLabel = count >= 5 ? '🔥 PERFECT' : count >= 3 ? '⚡ COMBO' : count >= 2 ? 'COMBO' : null
+
+  return (
+    <div className="fixed bottom-6 right-6 flex flex-col-reverse items-end gap-0.5 pointer-events-none z-20">
+
+      {/* 폭발 플래시 (오답 시) */}
+      {isToppling && (
+        <div
+          className="animate-explosion-flash absolute bottom-0 right-0 rounded-full"
+          style={{ width: bookW * 0.6, height: bookW * 0.6, background: '#ff6b35', transformOrigin: 'center' }}
+        />
+      )}
+
+      {/* 책 목록 */}
+      {Array.from({ length: count }).map((_, i) => {
+        const c = BOOK_COLORS[i % BOOK_COLORS.length]
+        const v = EXPLODE_VECTORS[i % EXPLODE_VECTORS.length]
+        return (
+          <div
+            key={i}
+            className={isToppling ? 'animate-explode-out' : i === count - 1 ? 'animate-fall-in' : ''}
+            style={{
+              width: bookW,
+              height: bookH,
+              borderRadius: 3,
+              background: `linear-gradient(to right, ${c.spine} 0%, ${c.spine} 7%, ${c.cover} 7%, ${c.cover} 93%, ${c.accent} 93%)`,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              // 아래 책(i=0)이 먼저 폭발, 위 책이 약간 늦게
+              animationDelay: isToppling ? `${i * 25}ms` : '0ms',
+              '--tx': v.tx, '--ty': v.ty, '--ts': v.ts, '--tr': v.tr,
+            }}
+          />
+        )
+      })}
+
+      {/* 콤보 배지 */}
+      {!isToppling && comboLabel && (
+        <div
+          key={`combo-${count}`}
+          className="animate-combo-pop mb-1 px-3 py-1 rounded-full text-xs font-black tracking-wider"
+          style={{
+            background: count >= 5 ? LIB.deepRed : count >= 3 ? LIB.wood : LIB.woodLight,
+            color: LIB.parchment,
+            boxShadow: `0 2px 8px rgba(0,0,0,0.4)`,
+          }}
+        >
+          {comboLabel} ×{count}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── 퀴즈 화면 ─────────────────────────────────────────────────────
+
+function QuizView({ question, current, total, chosen, onChoose, activeLevel, hasBookAnim, stackedBooks, isToppling }) {
   return (
     <div className="min-h-[calc(100vh-72px)] flex items-center justify-center p-6" style={{ background: LIB.parchment }}>
       <div className="w-full max-w-lg">
@@ -325,6 +398,10 @@ function QuizView({ question, current, total, chosen, onChoose, activeLevel }) {
           </p>
           <p className="text-2xl font-black leading-snug" style={{ color: LIB.ink }}>{question.question}</p>
         </div>
+
+        {hasBookAnim && (
+          <BookStackAnimation count={stackedBooks} isToppling={isToppling} total={total} />
+        )}
 
         <div className="space-y-3">
           {question.choices.map((choice, i) => {
@@ -457,7 +534,7 @@ function ResultView({ answers, total, saving, onRetry, quizResult, activeLevel, 
 // ── 메인 ─────────────────────────────────────────────────────────
 
 export default function QuizPage() {
-  const { user }                    = useAuth()
+  const { user, profile }           = useAuth()
   const [step, setStep]             = useState('select')
   const [wordbooks, setWordbooks]   = useState([])
   const [selectedWb, setSelectedWb] = useState(null)
@@ -470,6 +547,10 @@ export default function QuizPage() {
   const [quizResult, setQuizResult] = useState(null)
   const [noWordsModal, setNoWordsModal] = useState(false)
   const [wbLevelCounts, setWbLevelCounts] = useState({})
+  const [stackedBooks, setStackedBooks] = useState(0)
+  const [isToppling,  setIsToppling]   = useState(false)
+
+  const hasBookAnim = profile?.owned_items?.includes(QUIZ_BOOK_ANIM_ID) ?? false
 
   const achievementWbId = selectedWb?.id ?? null
   const { progress, refetch } = useWordbookAchievement(user?.id, achievementWbId)
@@ -572,6 +653,8 @@ export default function QuizPage() {
     setAnswers([])
     setCurrent(0)
     setChosen(null)
+    setStackedBooks(0)
+    setIsToppling(false)
     setStep('quiz')
   }
 
@@ -580,6 +663,15 @@ export default function QuizPage() {
     setChosen(choice)
     const isCorrect   = choice === questions[current].answer
     const nextAnswers = [...answers, { chosen: choice, correct: isCorrect }]
+
+    if (hasBookAnim) {
+      if (isCorrect) {
+        setStackedBooks(n => n + 1)
+      } else {
+        setIsToppling(true)
+        setTimeout(() => { setStackedBooks(0); setIsToppling(false) }, 700)
+      }
+    }
 
     setTimeout(() => {
       setChosen(null)
@@ -638,7 +730,7 @@ export default function QuizPage() {
     </>
   )
   if (step === 'quiz') return (
-    <QuizView question={questions[current]} current={current} total={questions.length} chosen={chosen} onChoose={handleChoose} activeLevel={activeLevel} />
+    <QuizView question={questions[current]} current={current} total={questions.length} chosen={chosen} onChoose={handleChoose} activeLevel={activeLevel} hasBookAnim={hasBookAnim} stackedBooks={stackedBooks} isToppling={isToppling} />
   )
   if (step === 'result') return (
     <ResultView
