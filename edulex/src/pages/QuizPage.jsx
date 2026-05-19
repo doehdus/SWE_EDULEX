@@ -19,10 +19,9 @@ function shuffle(arr) {
   return a
 }
 
-function buildQuestions(allWords) {
-  const pool = shuffle(allWords).slice(0, Math.min(10, allWords.length))
-  return pool.map(word => {
-    const wrongs  = shuffle(allWords.filter(w => w.id !== word.id)).slice(0, 3).map(w => w.english)
+function buildQuestions(pool, source) {
+  return shuffle(pool).map(word => {
+    const wrongs  = shuffle(source.filter(w => w.id !== word.id)).slice(0, 3).map(w => w.english)
     const choices = shuffle([word.english, ...wrongs])
     return { id: word.id, question: word.major_meaning, answer: word.english, choices }
   })
@@ -66,7 +65,7 @@ function NoWordsModal({ level, onClose }) {
 
 // ── 선택 화면 ─────────────────────────────────────────────────────
 
-function SelectView({ wordbooks, selectedWb, onSelect, onStart, activeLevel, onLevelChange, progress, isReviewMode, wbLevelCounts }) {
+function SelectView({ wordbooks, selectedWb, onSelect, onStart, activeLevel, onLevelChange, progress, isReviewMode, wbLevelCounts, wordCountMode, onWordCountModeChange }) {
   const [wbTab, setWbTab]           = useState('official')
   const [lv4Open, setLv4Open]       = useState(false)
 
@@ -273,6 +272,38 @@ function SelectView({ wordbooks, selectedWb, onSelect, onStart, activeLevel, onL
           </div>
         </div>
 
+        {/* ── Step 3: 단어 수 선택 ── */}
+        <div className="mb-6">
+          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: LIB.inkMid }}>
+            Step 3 · 단어 수 선택
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { mode: 'all',  label: '전체', desc: '레벨 단어 전부 출제' },
+              { mode: 'half', label: '절반', desc: '무작위 절반만 출제' },
+            ].map(({ mode, label, desc }) => {
+              const active = wordCountMode === mode
+              return (
+                <button
+                  key={mode}
+                  onClick={() => onWordCountModeChange(mode)}
+                  className="rounded-xl px-4 py-3 text-left transition-all"
+                  style={{
+                    background: active
+                      ? `linear-gradient(135deg, ${LIB.wood} 0%, ${LIB.woodLight} 100%)`
+                      : LIB.parchmentDark,
+                    color: active ? LIB.parchment : LIB.inkMid,
+                    border: `1px solid ${active ? LIB.wood : LIB.shelfLine}`,
+                  }}
+                >
+                  <p className="text-sm font-black">{label}</p>
+                  <p className="text-[11px] mt-0.5 opacity-75">{desc}</p>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         {/* 시작 버튼 */}
         <button
           onClick={onStart}
@@ -466,6 +497,7 @@ export default function QuizPage() {
   const [quizResult, setQuizResult] = useState(null)
   const [noWordsModal, setNoWordsModal] = useState(false)
   const [wbLevelCounts, setWbLevelCounts] = useState({})
+  const [wordCountMode, setWordCountMode] = useState('all')
 
   const achievementWbId = selectedWb?.id ?? null
   const { progress, refetch } = useWordbookAchievement(user?.id, achievementWbId)
@@ -554,13 +586,17 @@ export default function QuizPage() {
       const { data } = await q
       allWords = data
     }
-    if (!allWords || allWords.length < 4) {
-      alert('퀴즈를 위해 단어가 4개 이상 필요합니다.')
+    if (!allWords || allWords.length === 0) {
+      setNoWordsModal(true)
       return
     }
 
+    const pool = wordCountMode === 'half'
+      ? shuffle(allWords).slice(0, Math.ceil(allWords.length / 2))
+      : allWords
+
     setQuizResult(null)
-    setQuestions(buildQuestions(allWords))
+    setQuestions(buildQuestions(pool, allWords))
     setAnswers([])
     setCurrent(0)
     setChosen(null)
@@ -625,6 +661,8 @@ export default function QuizPage() {
         progress={progress}
         isReviewMode={isReviewMode}
         wbLevelCounts={wbLevelCounts}
+        wordCountMode={wordCountMode}
+        onWordCountModeChange={setWordCountMode}
       />
       {noWordsModal && <NoWordsModal level={activeLevel} onClose={() => setNoWordsModal(false)} />}
     </>
