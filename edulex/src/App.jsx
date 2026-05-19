@@ -16,6 +16,7 @@ import DashboardPage from './pages/DashboardPage'
 import AdminWordbookPage from './pages/AdminWordbookPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
 
 function UserLayout({ children }) {
   return (
@@ -64,6 +65,12 @@ export default function App() {
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <UserLayout><DashboardPage /></UserLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/settings/change-password" element={
+              <ProtectedRoute>
+                <UserLayout><ChangePasswordPage /></UserLayout>
               </ProtectedRoute>
             } />
 
