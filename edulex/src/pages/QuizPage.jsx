@@ -15,12 +15,34 @@ function shuffle(arr) {
   return a
 }
 
-function buildQuestions(allWords) {
-  const pool = shuffle(allWords).slice(0, Math.min(10, allWords.length))
+function buildQuestions(targetWords, allWords, level = 1) {
+  const pool = shuffle(targetWords).slice(0, Math.min(10, targetWords.length))
   return pool.map(word => {
-    const wrongs  = shuffle(allWords.filter(w => w.id !== word.id)).slice(0, 3).map(w => w.english)
-    const choices = shuffle([word.english, ...wrongs])
-    return { id: word.id, question: word.major_meaning, answer: word.english, choices }
+    let question, answer, wrongs
+    let choices = []
+    if (level === 1) {
+      question = word.major_meaning
+      answer = word.english
+      wrongs = shuffle(allWords.filter(w => w.id !== word.id)).slice(0, 3).map(w => w.english)
+      choices = shuffle([answer, ...wrongs])
+    } else if (level === 2) {
+      question = word.english
+      answer = word.major_meaning
+      wrongs = shuffle(allWords.filter(w => w.id !== word.id)).slice(0, 3).map(w => w.major_meaning)
+      choices = shuffle([answer, ...wrongs])
+    } else if (level === 3) {
+      question = word.major_meaning
+      answer = word.english
+    } else if (level === 4) {
+      const example = word.major_example || word.general_example || ''
+      const regex = new RegExp(word.english, 'gi')
+      question = example.replace(regex, '_________')
+      if (question === example) {
+        question = `(예문 없음) 뜻: ${word.major_meaning}`
+      }
+      answer = word.english
+    }
+    return { id: word.id, question, answer, choices }
   })
 }
 
@@ -30,20 +52,20 @@ const CHOICE_LABELS = ['A', 'B', 'C', 'D']
 
 const LEVELS = [
   { lv: 1, label: 'Lv 1', desc: '뜻 → 영어 객관식', locked: false },
-  { lv: 2, label: 'Lv 2', desc: '영어 → 뜻 객관식', locked: true },
-  { lv: 3, label: 'Lv 3', desc: '뜻 → 영어 주관식', locked: true },
-  { lv: 4, label: 'Lv 4', desc: '영어 예문 빈칸채우기', locked: true },
+  { lv: 2, label: 'Lv 2', desc: '영어 → 뜻 객관식', locked: false },
+  { lv: 3, label: 'Lv 3', desc: '뜻 → 영어 주관식', locked: false },
+  { lv: 4, label: 'Lv 4', desc: '영어 예문 빈칸채우기', locked: false },
 ]
 
 // ── 선택 화면 ─────────────────────────────────────────────────────
 
-function SelectView({ wordbooks, selectedWb, onSelect, onStart }) {
+function SelectView({ wordbooks, selectedWb, onSelect, onStart, levelStats, loadingWb }) {
   const [activeLevel, setActiveLevel] = useState(1)
   const [wbTab, setWbTab] = useState('official') // 'official' | 'user'
 
   const officialBooks = wordbooks.filter(w => w.type === 'official')
-  const userBooks     = wordbooks.filter(w => w.type === 'user')
-  const visibleBooks  = wbTab === 'official' ? officialBooks : userBooks
+  const userBooks = wordbooks.filter(w => w.type === 'user')
+  const visibleBooks = wbTab === 'official' ? officialBooks : userBooks
 
   return (
     <div
@@ -66,31 +88,37 @@ function SelectView({ wordbooks, selectedWb, onSelect, onStart }) {
           <div className="grid grid-cols-4 gap-2">
             {LEVELS.map(({ lv, label, desc, locked }) => {
               const isActive = activeLevel === lv
+              const isLocked = selectedWb ? (levelStats[lv] || 0) === 0 : true
               return (
                 <button
                   key={lv}
-                  onClick={() => !locked && setActiveLevel(lv)}
-                  disabled={locked}
+                  onClick={() => !isLocked && setActiveLevel(lv)}
+                  disabled={isLocked}
                   className="relative flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 transition-all duration-150"
-                  style={locked
+                  style={isLocked
                     ? { background: LIB.parchmentDark, borderColor: 'transparent', cursor: 'not-allowed', opacity: 0.55 }
                     : isActive
                       ? { background: `linear-gradient(135deg, ${LIB.wood} 0%, ${LIB.woodLight} 100%)`, borderColor: LIB.gold, boxShadow: `0 4px 14px rgba(92,58,30,0.3)` }
                       : { background: 'white', borderColor: LIB.shelfLine }
                   }
                 >
-                  {locked && (
-                    <span className="absolute top-2 right-2"><Lock size={11} strokeWidth={2} style={{ color: LIB.shelfLine }} /></span>
-                  )}
+                  <span className="absolute top-2 right-2 flex flex-col items-end gap-1">
+                    {isLocked && <Lock size={11} strokeWidth={2} style={{ color: LIB.shelfLine }} />}
+                    {!isLocked && selectedWb && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: isActive ? LIB.goldLight : LIB.parchmentDark, color: isActive ? LIB.wood : LIB.inkMid }}>
+                        {levelStats[lv] || 0}
+                      </span>
+                    )}
+                  </span>
                   <span
                     className="text-sm font-black"
-                    style={{ color: locked ? LIB.shelfLine : isActive ? LIB.gold : LIB.ink }}
+                    style={{ color: isLocked ? LIB.shelfLine : isActive ? LIB.gold : LIB.ink }}
                   >
                     {label}
                   </span>
                   <span
                     className="text-[9px] font-semibold text-center leading-tight px-1"
-                    style={{ color: locked ? LIB.shelfLine : isActive ? LIB.goldLight : LIB.inkLight }}
+                    style={{ color: isLocked ? LIB.shelfLine : isActive ? LIB.goldLight : LIB.inkLight }}
                   >
                     {desc}
                   </span>
@@ -118,7 +146,7 @@ function SelectView({ wordbooks, selectedWb, onSelect, onStart }) {
           >
             {[
               { key: 'official', icon: <BookOpen size={13} strokeWidth={2} />, label: '공식 단어장', count: officialBooks.length },
-              { key: 'user',     icon: <Bot size={13} strokeWidth={2} />,      label: '나만의 단어장', count: userBooks.length },
+              { key: 'user', icon: <Bot size={13} strokeWidth={2} />, label: '나만의 단어장', count: userBooks.length },
             ].map(tab => (
               <button
                 key={tab.key}
@@ -153,7 +181,7 @@ function SelectView({ wordbooks, selectedWb, onSelect, onStart }) {
                 {wbTab === 'user' ? '아직 나만의 단어장이 없어요' : '공식 단어장이 없어요'}
               </div>
             ) : visibleBooks.map((wb, idx) => {
-              const bookCol  = BOOK_COLORS[idx % BOOK_COLORS.length]
+              const bookCol = BOOK_COLORS[idx % BOOK_COLORS.length]
               const selected = selectedWb?.id === wb.id
               return (
                 <button
@@ -195,8 +223,8 @@ function SelectView({ wordbooks, selectedWb, onSelect, onStart }) {
 
         {/* 시작 버튼 */}
         <button
-          onClick={onStart}
-          disabled={!selectedWb}
+          onClick={() => onStart(activeLevel)}
+          disabled={!selectedWb || loadingWb || (levelStats[activeLevel] || 0) === 0}
           className="w-full py-4 rounded-xl text-sm font-black tracking-wide transition-all duration-200 disabled:opacity-40"
           style={{
             background: selectedWb
@@ -206,7 +234,7 @@ function SelectView({ wordbooks, selectedWb, onSelect, onStart }) {
             boxShadow: selectedWb ? '0 4px 14px rgba(92,58,30,0.35)' : 'none',
           }}
         >
-          {selectedWb ? `Lv ${activeLevel} 테스트 시작 →` : '단어장을 선택하세요'}
+          {loadingWb ? '단어장 불러오는 중...' : selectedWb ? `Lv ${activeLevel} 테스트 시작 →` : '단어장을 선택하세요'}
         </button>
 
       </div>
@@ -216,7 +244,41 @@ function SelectView({ wordbooks, selectedWb, onSelect, onStart }) {
 
 // ── 퀴즈 화면 ─────────────────────────────────────────────────────
 
-function QuizView({ question, current, total, chosen, onChoose }) {
+function QuizView({ question, current, total, chosen, onChoose, level }) {
+  const [inputValue, setInputValue] = useState('')
+  const isSubjective = level >= 3
+
+  useEffect(() => {
+    setInputValue('')
+  }, [current])
+
+  const handleInputSubmit = (e) => {
+    e.preventDefault()
+    if (chosen !== null || !inputValue.trim()) return
+    onChoose(inputValue.trim().toLowerCase())
+  }
+
+  let titleText = '이 뜻에 해당하는 영어 단어는?'
+  if (level === 2) titleText = '이 단어의 알맞은 뜻은?'
+  if (level === 3) titleText = '이 뜻에 해당하는 영어 단어를 입력하세요'
+  if (level === 4) titleText = '빈칸에 들어갈 알맞은 영어 단어는?'
+
+  let inputColor = LIB.ink
+  let inputBg = 'white'
+  let inputBorder = LIB.shelfLine
+  if (chosen !== null && isSubjective) {
+    const isCorrect = chosen.trim().toLowerCase() === question.answer.toLowerCase()
+    if (isCorrect) {
+      inputBg = '#f0fdf4'
+      inputBorder = '#4ade80'
+      inputColor = '#166534'
+    } else {
+      inputBg = '#fff1f2'
+      inputBorder = '#f87171'
+      inputColor = '#991b1b'
+    }
+  }
+
   return (
     <div
       className="min-h-[calc(100vh-72px)] flex items-center justify-center p-6"
@@ -241,7 +303,7 @@ function QuizView({ question, current, total, chosen, onChoose }) {
             ))}
           </div>
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: LIB.parchmentDark, color: LIB.inkMid }}>
-            Lv 1
+            Lv {level}
           </span>
         </div>
 
@@ -259,17 +321,49 @@ function QuizView({ question, current, total, chosen, onChoose }) {
           <div className="absolute top-0 right-8 w-3 h-8 rounded-b-sm opacity-60"
             style={{ background: LIB.deepRed }} />
           <p className="text-xs font-semibold mb-3 uppercase tracking-widest" style={{ color: LIB.inkLight }}>
-            이 뜻에 해당하는 영어 단어는?
+            {titleText}
           </p>
           <p className="text-2xl font-black leading-snug" style={{ color: LIB.ink }}>
             {question.question}
           </p>
         </div>
 
-        {/* 선택지 */}
-        <div className="space-y-3">
-          {question.choices.map((choice, i) => {
-            let bg = 'white', borderColor = LIB.shelfLine, textColor = LIB.ink
+        {/* 선택지 또는 입력 폼 */}
+        {isSubjective ? (
+          <form onSubmit={handleInputSubmit} className="flex flex-col gap-3">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              disabled={chosen !== null}
+              placeholder="정답을 입력하세요"
+              autoFocus
+              className="w-full px-5 py-4 rounded-xl border-2 text-center text-lg font-bold outline-none transition-all"
+              style={{
+                borderColor: inputBorder,
+                background: inputBg,
+                color: inputColor,
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+              }}
+            />
+            <button
+              type="submit"
+              disabled={chosen !== null || !inputValue.trim()}
+              className="w-full py-4 rounded-xl text-sm font-black tracking-wide transition-all disabled:opacity-50"
+              style={{ background: LIB.gold, color: LIB.ink }}
+            >
+              제출하기
+            </button>
+            {chosen !== null && chosen.trim().toLowerCase() !== question.answer.toLowerCase() && (
+              <div className="mt-2 text-center font-bold text-sm" style={{ color: '#991b1b' }}>
+                정답: {question.answer}
+              </div>
+            )}
+          </form>
+        ) : (
+          <div className="space-y-3">
+            {question.choices.map((choice, i) => {
+              let bg = 'white', borderColor = LIB.shelfLine, textColor = LIB.ink
             let labelBg = LIB.parchmentDark, labelColor = LIB.inkMid
 
             if (chosen !== null) {
@@ -302,7 +396,8 @@ function QuizView({ question, current, total, chosen, onChoose }) {
               </button>
             )
           })}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -310,14 +405,14 @@ function QuizView({ question, current, total, chosen, onChoose }) {
 
 // ── 결과 화면 ─────────────────────────────────────────────────────
 
-function ResultView({ answers, total, saving, onRetry }) {
+function ResultView({ answers, total, saving, onRetry, level }) {
   const correctCount = answers.filter(a => a.correct).length
-  const score        = Math.round((correctCount / total) * 100)
+  const score = Math.round((correctCount / total) * 100)
 
-  const grade = score >= 90 ? { label: '완벽해요!',  icon: <Trophy   size={48} strokeWidth={1.2} style={{ color: LIB.gold }} />,        color: LIB.gold }
-    : score >= 70           ? { label: '잘했어요!',  icon: <BookOpen  size={48} strokeWidth={1.2} style={{ color: '#4ade80' }} />,          color: '#4ade80' }
-    : score >= 50           ? { label: '조금 더!',   icon: <BookMarked size={48} strokeWidth={1.2} style={{ color: LIB.woodLight }} />,    color: LIB.woodLight }
-    :                         { label: '다시 도전!', icon: <Dumbbell  size={48} strokeWidth={1.2} style={{ color: LIB.deepRed }} />,        color: LIB.deepRed }
+  const grade = score >= 90 ? { label: '완벽해요!', icon: <Trophy size={48} strokeWidth={1.2} style={{ color: LIB.gold }} />, color: LIB.gold }
+    : score >= 70 ? { label: '잘했어요!', icon: <BookOpen size={48} strokeWidth={1.2} style={{ color: '#4ade80' }} />, color: '#4ade80' }
+      : score >= 50 ? { label: '조금 더!', icon: <BookMarked size={48} strokeWidth={1.2} style={{ color: LIB.woodLight }} />, color: LIB.woodLight }
+        : { label: '다시 도전!', icon: <Dumbbell size={48} strokeWidth={1.2} style={{ color: LIB.deepRed }} />, color: LIB.deepRed }
 
   return (
     <div
@@ -336,7 +431,7 @@ function ResultView({ answers, total, saving, onRetry }) {
           >
             <div className="flex justify-center mb-2">{grade.icon}</div>
             <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: LIB.shelfLine }}>
-              Lv 1 테스트 결과
+              Lv {level} 테스트 결과
             </p>
             <p className="text-5xl font-black" style={{ color: LIB.gold }}>{score}</p>
             <p className="text-sm font-bold" style={{ color: LIB.goldLight }}>점</p>
@@ -410,14 +505,18 @@ function ResultView({ answers, total, saving, onRetry }) {
 
 export default function QuizPage() {
   const { user } = useAuth()
-  const [step, setStep]             = useState('select')
-  const [wordbooks, setWordbooks]   = useState([])
+  const [step, setStep] = useState('select')
+  const [wordbooks, setWordbooks] = useState([])
   const [selectedWb, setSelectedWb] = useState(null)
-  const [questions, setQuestions]   = useState([])
-  const [current, setCurrent]       = useState(0)
-  const [answers, setAnswers]       = useState([])
-  const [chosen, setChosen]         = useState(null)
-  const [saving, setSaving]         = useState(false)
+  const [questions, setQuestions] = useState([])
+  const [current, setCurrent] = useState(0)
+  const [answers, setAnswers] = useState([])
+  const [chosen, setChosen] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [activeLevel, setActiveLevel] = useState(1)
+  const [wbWords, setWbWords] = useState([])
+  const [levelStats, setLevelStats] = useState({ 1: 0, 2: 0, 3: 0, 4: 0 })
+  const [loadingWb, setLoadingWb] = useState(false)
 
   useEffect(() => { fetchWordbooks() }, [user])
 
@@ -428,24 +527,76 @@ export default function QuizPage() {
     ])
     setWordbooks([
       ...(official ?? []).map(w => ({ ...w, type: 'official' })),
-      ...(mine    ?? []).map(w => ({ ...w, type: 'user' })),
+      ...(mine ?? []).map(w => ({ ...w, type: 'user' })),
     ])
   }
 
-  const startQuiz = async () => {
-    if (!selectedWb) return
-    const table = selectedWb.type === 'official' ? 'official_words' : 'user_words'
-    const { data: allWords } = await supabase
-      .from(table)
-      .select('id, english, major_meaning')
-      .eq('wordbook_id', selectedWb.id)
+  const handleSelectWb = async (wb) => {
+    setSelectedWb(wb)
+    setWbWords([])
+    setLevelStats({ 1: 0, 2: 0, 3: 0, 4: 0 })
+    if (!wb) return
 
-    if (!allWords || allWords.length < 4) {
-      alert('퀴즈를 위해 단어가 4개 이상 필요합니다.')
+    setLoadingWb(true)
+    let allWords = []
+    
+    if (wb.type === 'official') {
+      const { data: words } = await supabase
+        .from('official_words')
+        .select('id, english, major_meaning, major_example, general_example')
+        .eq('wordbook_id', wb.id)
+      
+      const { data: progress, error: progErr } = await supabase
+        .from('user_official_word_progress')
+        .select('word_id, word_level')
+        .eq('user_id', user.id)
+      
+      if (progErr) {
+        console.error('Progress fetch error:', progErr)
+      }
+      
+      const progressMap = {}
+      progress?.forEach(p => { progressMap[p.word_id] = p.word_level })
+      
+      allWords = (words || []).map(w => ({
+        ...w,
+        word_level: progressMap[w.id] || 1
+      }))
+    } else {
+      const { data } = await supabase
+        .from('user_words')
+        .select('id, english, major_meaning, major_example, general_example, word_level')
+        .eq('wordbook_id', wb.id)
+      allWords = data || []
+    }
+    
+    const stats = { 1: 0, 2: 0, 3: 0, 4: 0 }
+    allWords.forEach(w => {
+      const lv = w.word_level || 1
+      if (stats[lv] !== undefined) stats[lv]++
+    })
+    
+    setWbWords(allWords)
+    setLevelStats(stats)
+    setLoadingWb(false)
+  }
+
+  const startQuiz = async (level) => {
+    if (!selectedWb || loadingWb) return
+    setActiveLevel(level)
+    
+    if (wbWords.length < 4) {
+      alert('단어장에 단어가 4개 이상 필요합니다.')
       return
     }
 
-    setQuestions(buildQuestions(allWords))
+    const targetWords = wbWords.filter(w => (w.word_level || 1) === level)
+    if (targetWords.length === 0) {
+      alert(`해당 레벨(${level})에 도달한 단어가 없습니다.`)
+      return
+    }
+
+    setQuestions(buildQuestions(targetWords, wbWords, level))
     setAnswers([])
     setCurrent(0)
     setChosen(null)
@@ -455,8 +606,11 @@ export default function QuizPage() {
   const handleChoose = (choice) => {
     if (chosen !== null) return
     setChosen(choice)
-    const isCorrect   = choice === questions[current].answer
-    const nextAnswers = [...answers, { chosen: choice, correct: isCorrect }]
+    const currentQ = questions[current]
+    const isCorrect = typeof choice === 'string' 
+      ? choice.trim().toLowerCase() === currentQ.answer.toLowerCase()
+      : choice === currentQ.answer
+    const nextAnswers = [...answers, { wordId: currentQ.id, chosen: choice, correct: isCorrect }]
 
     setTimeout(() => {
       setChosen(null)
@@ -472,29 +626,38 @@ export default function QuizPage() {
   const finishQuiz = async (finalAnswers) => {
     setSaving(true)
     setAnswers(finalAnswers)
-    const correctCount = finalAnswers.filter(a => a.correct).length
-    const score        = Math.round((correctCount / questions.length) * 100)
+    const correctAnswers = finalAnswers.filter(a => a.correct)
+    const correctCount = correctAnswers.length
+    const score = Math.round((correctCount / questions.length) * 100)
+    const correctWordIds = correctAnswers.map(a => a.wordId)
 
-    await supabase.rpc('save_quiz_result', {
-      p_user_id:       user.id,
-      p_wordbook_id:   selectedWb.id,
+    const { error } = await supabase.rpc('save_quiz_result', {
+      p_user_id: user.id,
+      p_wordbook_id: selectedWb.id,
       p_wordbook_type: selectedWb.type,
-      p_score:         score,
-      p_total:         questions.length,
-      p_correct:       correctCount,
+      p_score: score,
+      p_total: questions.length,
+      p_correct: correctCount,
+      p_level: activeLevel,
+      p_correct_word_ids: correctWordIds,
     })
+
+    if (error) {
+      console.error('Quiz save error:', error)
+      alert('결과 저장 중 오류가 발생했습니다. 백엔드 연결이나 마이그레이션 적용 여부를 확인해주세요.\n' + error.message)
+    }
 
     setSaving(false)
     setStep('result')
   }
 
   if (step === 'select') return (
-    <SelectView wordbooks={wordbooks} selectedWb={selectedWb} onSelect={setSelectedWb} onStart={startQuiz} />
+    <SelectView wordbooks={wordbooks} selectedWb={selectedWb} onSelect={handleSelectWb} onStart={startQuiz} levelStats={levelStats} loadingWb={loadingWb} />
   )
   if (step === 'quiz') return (
-    <QuizView question={questions[current]} current={current} total={questions.length} chosen={chosen} onChoose={handleChoose} />
+    <QuizView question={questions[current]} current={current} total={questions.length} chosen={chosen} onChoose={handleChoose} level={activeLevel} />
   )
   if (step === 'result') return (
-    <ResultView answers={answers} total={questions.length} saving={saving} onRetry={() => { setStep('select'); setSelectedWb(null) }} />
+    <ResultView answers={answers} total={questions.length} saving={saving} onRetry={() => { setStep('select'); setSelectedWb(null) }} level={activeLevel} />
   )
 }
