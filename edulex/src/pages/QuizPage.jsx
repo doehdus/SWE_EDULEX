@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BookOpen, Bot, Lock, Check, Bookmark, Trophy, BookMarked, Dumbbell, RotateCcw } from 'lucide-react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
 import { LIB, BOOK_COLORS } from '../constants/theme'
+import { useStudyTime } from '../hooks/useStudyTime'
 
 // ── 유틸 ──────────────────────────────────────────────────────────
 
@@ -419,7 +420,14 @@ export default function QuizPage() {
   const [chosen, setChosen]         = useState(null)
   const [saving, setSaving]         = useState(false)
 
+  const sessionIdRef = useRef(null)
+  const { startSession, endSession } = useStudyTime(user?.id)
+
   useEffect(() => { fetchWordbooks() }, [user])
+
+  useEffect(() => {
+    return () => { if (sessionIdRef.current) endSession(sessionIdRef.current) }
+  }, [endSession])
 
   const fetchWordbooks = async () => {
     const [{ data: official }, { data: mine }] = await Promise.all([
@@ -450,6 +458,7 @@ export default function QuizPage() {
     setCurrent(0)
     setChosen(null)
     setStep('quiz')
+    sessionIdRef.current = await startSession('quiz')
   }
 
   const handleChoose = (choice) => {
@@ -472,6 +481,8 @@ export default function QuizPage() {
   const finishQuiz = async (finalAnswers) => {
     setSaving(true)
     setAnswers(finalAnswers)
+    await endSession(sessionIdRef.current)
+    sessionIdRef.current = null
     const correctCount = finalAnswers.filter(a => a.correct).length
     const score        = Math.round((correctCount / questions.length) * 100)
 
