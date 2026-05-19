@@ -383,6 +383,239 @@ function WordbookPanel() {
   )
 }
 
+// ── 유저 목록 조회 패널 (A02) ─────────────────────────────────────
+
+function UsersPanel() {
+  const [users, setUsers]             = useState([])
+  const [search, setSearch]           = useState('')
+  const [majorFilter, setMajorFilter] = useState('')
+  const [loading, setLoading]         = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+
+  const fetchUsers = async (s, m) => {
+    setLoading(true)
+    const { data, error } = await supabase.rpc('get_users_for_admin', {
+      p_search: s,
+      p_major: m,
+    })
+    if (error) { console.error(error); setLoading(false); return }
+    setUsers(data ?? [])
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchUsers(search, majorFilter) }, [search, majorFilter])
+
+  const handleSearchChange = (e) => { setSearch(e.target.value) }
+  const handleMajorChange  = (e) => { setMajorFilter(e.target.value) }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
+    const { error } = await supabase.functions.invoke('delete-user', {
+      body: { userId: deleteTarget.id },
+    })
+    if (error) { console.error(error) }
+    setDeleteTarget(null)
+    fetchUsers(search, majorFilter)
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6">
+      {/* 검색 필터 영역 */}
+      <div className="flex gap-3 mb-5">
+        <input
+          type="text"
+          value={search}
+          onChange={handleSearchChange}
+          placeholder="닉네임 또는 이메일 검색"
+          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+        />
+        <select
+          value={majorFilter}
+          onChange={handleMajorChange}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+        >
+          <option value="">전체 전공</option>
+          {MAJORS.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </div>
+
+      {/* 유저 테이블 */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">닉네임</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">이메일</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">전공</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-16">레벨</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-20">북마크</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-28">가입일</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 w-16">관리</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-12 text-center text-gray-300 text-sm">불러오는 중...</td>
+              </tr>
+            ) : users.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-12 text-center text-gray-300 text-sm">검색 결과가 없습니다.</td>
+              </tr>
+            ) : users.map(u => (
+              <tr key={u.id} className="hover:bg-gray-50 group">
+                <td className="px-4 py-3 font-semibold text-gray-800">{u.nickname ?? '—'}</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">{u.email}</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">{Array.isArray(u.major) ? u.major.join(', ') : (u.major ?? '—')}</td>
+                <td className="px-4 py-3 text-gray-700 text-center">{u.level ?? 0}</td>
+                <td className="px-4 py-3 text-gray-700 text-center">{u.bookmark ?? 0}</td>
+                <td className="px-4 py-3 text-gray-400 text-xs">
+                  {u.created_at ? new Date(u.created_at).toLocaleDateString('ko-KR') : '—'}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    onClick={() => setDeleteTarget(u)}
+                    className="text-xs text-red-400 hover:text-red-600 font-medium opacity-0 group-hover:opacity-100 transition"
+                  >
+                    삭제
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 총 유저 수 */}
+      {!loading && (
+        <p className="mt-3 text-xs text-gray-400 text-right">총 {users.length}명</p>
+      )}
+
+      {/* 삭제 확인 모달 */}
+      {deleteTarget && (
+        <ConfirmModal
+          title="유저 삭제"
+          description={<><strong className="text-gray-900">"{deleteTarget.nickname ?? deleteTarget.email}"</strong> 유저를 삭제하시겠습니까?</>}
+          warning="삭제된 유저 데이터는 복구할 수 없습니다."
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── 파이차트 SVG 헬퍼 ─────────────────────────────────────────────
+
+const MAJOR_COLORS = ['#7c3aed', '#0369a1', '#059669', '#b45309', '#be123c', '#0f766e']
+
+function polarToCartesian(cx, cy, r, angleDeg) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+}
+
+function buildSlicePath(cx, cy, r, startAngle, endAngle) {
+  const start  = polarToCartesian(cx, cy, r, startAngle)
+  const end    = polarToCartesian(cx, cy, r, endAngle)
+  const large  = endAngle - startAngle > 180 ? 1 : 0
+  return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${large} 1 ${end.x} ${end.y} Z`
+}
+
+// ── 전공별 사용자 현황 패널 (A06) ────────────────────────────────
+
+function MajorStatsPanel() {
+  const [distribution, setDistribution] = useState([])
+  const [loading, setLoading]           = useState(false)
+
+  useEffect(() => { fetchDistribution() }, [])
+
+  const fetchDistribution = async () => {
+    setLoading(true)
+    const { data, error } = await supabase.rpc('get_major_distribution')
+    if (error) { console.error(error); setLoading(false); return }
+    setDistribution(data ?? [])
+    setLoading(false)
+  }
+
+  const total = distribution.reduce((sum, d) => sum + (d.user_count ?? 0), 0)
+
+  // 파이차트 슬라이스 계산
+  const cx = 160
+  const cy = 160
+  const r  = 120
+
+  let currentAngle = 0
+  const slices = distribution.map((d, i) => {
+    const pct   = total > 0 ? (d.user_count / total) : 0
+    const sweep = pct * 360
+    const slice = { ...d, startAngle: currentAngle, endAngle: currentAngle + sweep, color: MAJOR_COLORS[i % MAJOR_COLORS.length], pct }
+    currentAngle += sweep
+    return slice
+  })
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6">
+      {loading ? (
+        <div className="flex items-center justify-center h-64 text-gray-300 text-sm">불러오는 중...</div>
+      ) : distribution.length === 0 ? (
+        <div className="flex items-center justify-center h-64 text-gray-300 text-sm">데이터가 없습니다.</div>
+      ) : (
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
+          {/* 파이차트 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center shrink-0">
+            <h2 className="text-sm font-semibold text-gray-700 mb-4">전공별 분포</h2>
+            <svg width={320} height={320} viewBox="0 0 320 320">
+              {slices.map((s, i) => (
+                s.pct > 0 && (
+                  <path
+                    key={s.major ?? i}
+                    d={buildSlicePath(cx, cy, r, s.startAngle, s.endAngle)}
+                    fill={s.color}
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                  />
+                )
+              ))}
+              {/* 중앙 총계 */}
+              <circle cx={cx} cy={cy} r={52} fill="#ffffff" />
+              <text x={cx} y={cy - 8} textAnchor="middle" fontSize={12} fill="#6b7280">총 유저</text>
+              <text x={cx} y={cy + 12} textAnchor="middle" fontSize={20} fontWeight="bold" fill="#111827">{total}</text>
+              <text x={cx} y={cy + 28} textAnchor="middle" fontSize={11} fill="#9ca3af">명</text>
+            </svg>
+          </div>
+
+          {/* 범례 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 flex-1">
+            <h2 className="text-sm font-semibold text-gray-700 mb-4">전공별 상세</h2>
+            <div className="space-y-3">
+              {slices.map((s, i) => (
+                <div key={s.major ?? i} className="flex items-center gap-3">
+                  <span className="w-3 h-3 rounded-full shrink-0" style={{ background: s.color }} />
+                  <span className="text-sm text-gray-700 w-24 shrink-0">{s.major}</span>
+                  <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-2 rounded-full transition-all"
+                      style={{ width: `${(s.pct * 100).toFixed(1)}%`, background: s.color }}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500 w-10 text-right shrink-0">{s.user_count}명</span>
+                  <span className="text-xs font-semibold w-12 text-right shrink-0" style={{ color: s.color }}>
+                    {total > 0 ? (s.pct * 100).toFixed(1) : '0.0'}%
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 pt-4 border-t border-gray-100 flex justify-between text-xs text-gray-400">
+              <span>전체 전공 수: {distribution.length}개</span>
+              <span>총 유저: {total}명</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── 관리자 페이지 레이아웃 ────────────────────────────────────────
 
 export default function AdminWordbookPage() {
@@ -396,11 +629,11 @@ export default function AdminWordbookPage() {
   const renderContent = () => {
     switch (activeMenu) {
       case 'wordbook':    return <WordbookPanel />
-      case 'users':       return <ComingSoon icon="👥" title="유저 목록 조회"     badge="A02" description="닉네임·이메일 기준으로 전체 유저를 검색하고 조회합니다." />
+      case 'users':       return <UsersPanel />
       case 'user-detail': return <ComingSoon icon="🪪" title="유저 상세 정보"     badge="A03" description="가입 정보(닉네임, 이메일 등) 상세 확인 및 관리." />
       case 'qna':         return <ComingSoon icon="💬" title="Q&A 게시판 답변"    badge="A04" description="사용자 문의에 답변을 작성하고 완료 상태를 관리합니다." />
       case 'db-usage':    return <ComingSoon icon="🗄️" title="DB 사용량 모니터링" badge="A05" description="Supabase DB 사용량 지표를 실시간으로 확인합니다." />
-      case 'stats':       return <ComingSoon icon="📊" title="전공별 사용자 현황" badge="A06" description="전공별 가입 인원수를 차트로 시각화합니다." />
+      case 'stats':       return <MajorStatsPanel />
       default:            return null
     }
   }
