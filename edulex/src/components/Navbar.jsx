@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Library, NotebookText, FlaskConical, BarChart2, LogOut } from 'lucide-react'
+import { Library, NotebookText, FlaskConical, BarChart2, LogOut, MessageSquare } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { LIB } from '../constants/theme'
 import logo from '../assets/logo.png'
@@ -24,6 +24,7 @@ const MENU_ITEMS = [
   { path: '/wordbook/my',       label: '나만의 단어장', icon: <NotebookText size={18} strokeWidth={1.8} /> },
   { path: '/quiz',              label: '테스트',       icon: <FlaskConical size={18} strokeWidth={1.8} /> },
   { path: '/dashboard',        label: '학습 현황',    icon: <BarChart2 size={18} strokeWidth={1.8} /> },
+  { path: '/suggestions',      label: '건의사항',     icon: <MessageSquare size={18} strokeWidth={1.8} /> },
 ]
 
 export default function Navbar() {
@@ -46,13 +47,9 @@ export default function Navbar() {
   return (
     <>
       <nav className="px-6 py-3 flex items-center justify-between sticky top-0 z-40" style={{ background: LIB.cream, borderBottom: `1px solid ${LIB.shelfLine}` }}>
-        {/* 로고 */}
         <Link to="/"><img src={logo} alt="EduLex" className="h-16 w-auto" /></Link>
 
-        {/* 우측: 아이콘 + 햄버거 */}
         <div className="flex items-center gap-4">
-
-          {/* 프로필 아이콘 */}
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setProfileOpen(v => !v)}
@@ -65,7 +62,6 @@ export default function Navbar() {
 
             {profileOpen && (
               <div className="absolute right-0 top-12 rounded-2xl shadow-xl z-50 w-72 overflow-hidden" style={{ background: LIB.cream, border: `1px solid ${LIB.shelfLine}` }}>
-                {/* 아이콘 선택 */}
                 <div className="px-4 pt-4 pb-3" style={{ borderBottom: `1px solid ${LIB.parchmentDark}` }}>
                   <p className="text-xs font-bold mb-3" style={{ color: LIB.inkLight }}>아이콘 선택</p>
                   <div className="grid grid-cols-4 gap-2">
@@ -81,7 +77,6 @@ export default function Navbar() {
                     ))}
                   </div>
                 </div>
-                {/* 로그아웃 */}
                 <button
                   onClick={async () => { setProfileOpen(false); await signOut(); navigate('/login') }}
                   className="w-full text-left px-4 py-3 text-sm font-semibold transition flex items-center gap-2"
@@ -93,7 +88,6 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* 햄버거 메뉴 */}
           <button
             onClick={() => setSidebarOpen(true)}
             className="flex flex-col gap-1.5 p-2 rounded-lg transition hover:opacity-70"
@@ -106,19 +100,16 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* 오버레이 */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* 사이드바 */}
       <aside
         className={`fixed top-0 right-0 h-full w-72 shadow-2xl z-50 flex flex-col transition-transform duration-300 ${
           sidebarOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{ background: LIB.cream, borderLeft: `1px solid ${LIB.shelfLine}` }}
       >
-        {/* 사이드바 상단 책등 라인 */}
         <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${LIB.wood}, ${LIB.woodLight})` }} />
 
         <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: `1px solid ${LIB.parchmentDark}` }}>
