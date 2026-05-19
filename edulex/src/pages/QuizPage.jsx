@@ -79,8 +79,8 @@ function SelectView({ wordbooks, selectedWb, onSelect, onStart, activeLevel, onL
     ? [progress.lv1_count, progress.lv2_count, progress.lv3_count, progress.lv4_count]
     : null
 
-  const achievePct   = progress?.total > 0 ? Math.round((progress.lv4_count / progress.total) * 100) : 0
-  const achieveLabel = `성취도 ${achievePct}% (${progress?.lv4_count ?? 0}/${progress?.total ?? 0})`
+  const achievePct   = progress?.total > 0 ? Math.round((progress.graduated_count / progress.total) * 100) : 0
+  const achieveLabel = `성취도 ${achievePct}% (${progress?.graduated_count ?? 0}/${progress?.total ?? 0})`
 
   return (
     <div className="min-h-[calc(100vh-72px)] flex items-start justify-center p-6 pt-8" style={{ background: LIB.parchment }}>
@@ -178,11 +178,11 @@ function SelectView({ wordbooks, selectedWb, onSelect, onStart, activeLevel, onL
 
               {lv4Open && (
                 <div className="border-t px-4 py-3 max-h-44 overflow-y-auto" style={{ borderColor: LIB.shelfLine }}>
-                  {progress.lv4_words?.length === 0 ? (
-                    <p className="text-xs text-center py-2" style={{ color: LIB.inkLight }}>아직 LV4 달성 단어가 없어요</p>
+                  {progress.graduated_words?.length === 0 ? (
+                    <p className="text-xs text-center py-2" style={{ color: LIB.inkLight }}>아직 졸업한 단어가 없어요</p>
                   ) : (
                     <div className="space-y-1.5">
-                      {progress.lv4_words.map(w => (
+                      {progress.graduated_words.map(w => (
                         <div key={w.id} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: LIB.parchment }}>
                           <span className="text-xs font-black" style={{ color: LIB.ink }}>{w.english}</span>
                           <span className="text-[10px]" style={{ color: LIB.inkLight }}>{w.major_meaning}</span>
@@ -239,7 +239,9 @@ function SelectView({ wordbooks, selectedWb, onSelect, onStart, activeLevel, onL
               const bookCol    = BOOK_COLORS[idx % BOOK_COLORS.length]
               const selected   = selectedWb?.id === wb.id
               const lvCount    = wbLevelCounts?.[wb.id]?.[activeLevel] ?? null
-              const isDisabled = !isReviewMode && lvCount !== null && lvCount === 0
+              const wbCounts   = wbLevelCounts?.[wb.id]
+              const wbInReview = wbCounts != null && wbCounts._total > 0 && wbCounts._graduated === wbCounts._total
+              const isDisabled = !wbInReview && lvCount !== null && lvCount === 0
               return (
                 <button
                   key={wb.id}
@@ -405,7 +407,9 @@ function ResultView({ answers, total, saving, onRetry, quizResult, activeLevel, 
               <div className="rounded-xl px-4 py-3 mb-4 flex items-center gap-2" style={{ background: `${LIB.gold}18`, border: `1px solid ${LIB.gold}` }}>
                 <TrendingUp size={16} style={{ color: LIB.gold, flexShrink: 0 }} />
                 <span className="text-sm font-bold" style={{ color: LIB.wood }}>
-                  Lv {activeLevel + 1}로 승급된 단어 {promotedCount}개 ↑
+                  {activeLevel === 4
+                    ? `졸업된 단어 ${promotedCount}개 ↑`
+                    : `Lv ${activeLevel + 1}로 승급된 단어 ${promotedCount}개 ↑`}
                 </span>
               </div>
             )}
@@ -469,7 +473,7 @@ export default function QuizPage() {
 
   const achievementWbId = selectedWb?.id ?? null
   const { progress, refetch } = useWordbookAchievement(user?.id, achievementWbId)
-  const isReviewMode = progress?.total > 0 && progress?.lv4_count === progress?.total
+  const isReviewMode = progress?.total > 0 && progress?.graduated_count === progress?.total
 
   useEffect(() => { fetchWordbooks() }, [user])
 
@@ -494,8 +498,12 @@ export default function QuizPage() {
     if (userIds.length > 0) {
       const { data } = await supabase
         .from('user_words').select('wordbook_id, word_level').in('wordbook_id', userIds)
-      for (const id of userIds) counts[id] = { 1: 0, 2: 0, 3: 0, 4: 0 }
-      for (const row of data ?? []) counts[row.wordbook_id][row.word_level]++
+      for (const id of userIds) counts[id] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, _total: 0, _graduated: 0 }
+      for (const row of data ?? []) {
+        counts[row.wordbook_id][row.word_level]++
+        counts[row.wordbook_id]._total++
+        if (row.word_level === 5) counts[row.wordbook_id]._graduated++
+      }
     }
 
     if (officialIds.length > 0) {
@@ -518,8 +526,8 @@ export default function QuizPage() {
       for (const id of officialIds) {
         const total = totalByWb[id] ?? 0
         const p = progByWb[id] ?? {}
-        const lv2 = p[2] ?? 0, lv3 = p[3] ?? 0, lv4 = p[4] ?? 0
-        counts[id] = { 1: total - lv2 - lv3 - lv4, 2: lv2, 3: lv3, 4: lv4 }
+        const lv2 = p[2] ?? 0, lv3 = p[3] ?? 0, lv4 = p[4] ?? 0, lv5 = p[5] ?? 0
+        counts[id] = { 1: total - lv2 - lv3 - lv4 - lv5, 2: lv2, 3: lv3, 4: lv4, 5: lv5, _total: total, _graduated: lv5 }
       }
     }
 
