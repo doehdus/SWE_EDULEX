@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { Modal, ConfirmModal } from '../components/ui/Modal'
 import { EmptyState } from '../components/ui/StateViews'
 import { MAJORS } from '../constants/theme'
+import DbUsagePanel from '../components/DbUsagePanel'
 
 // ── 상수 ──────────────────────────────────────────────────────────
 
@@ -399,8 +400,8 @@ export default function AdminWordbookPage() {
       case 'users':       return <ComingSoon icon="👥" title="유저 목록 조회"     badge="A02" description="닉네임·이메일 기준으로 전체 유저를 검색하고 조회합니다." />
       case 'user-detail': return <ComingSoon icon="🪪" title="유저 상세 정보"     badge="A03" description="가입 정보(닉네임, 이메일 등) 상세 확인 및 관리." />
       case 'qna':         return <ComingSoon icon="💬" title="Q&A 게시판 답변"    badge="A04" description="사용자 문의에 답변을 작성하고 완료 상태를 관리합니다." />
-      case 'db-usage':    return <ComingSoon icon="🗄️" title="DB 사용량 모니터링" badge="A05" description="Supabase DB 사용량 지표를 실시간으로 확인합니다." />
-      case 'stats':       return <ComingSoon icon="📊" title="전공별 사용자 현황" badge="A06" description="전공별 가입 인원수를 차트로 시각화합니다." />
+      case 'db-usage':    return <DbUsagePanel />
+      case 'stats':       return <MajorStatsPanel />
       default:            return null
     }
   }
