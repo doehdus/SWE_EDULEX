@@ -83,6 +83,11 @@ export default function LoginPage() {
               className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
             />
           </div>
+          <div className="flex justify-end mt-1">
+            <Link to="/forgot-password" className="text-xs text-[#7c3aed] hover:underline">
+              비밀번호를 잊으셨나요?
+            </Link>
+          </div>
 
           {error && (
             <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2">{error}</p>
