@@ -1,102 +1,160 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../utils/supabase'
-import { useAuth } from '../context/AuthContext'
+import { LIB } from '../constants/theme'
+import { useDashboard } from '../hooks/useDashboard'
+import AttendanceStreak from '../components/AttendanceStreak'
+import { Toast } from '../components/ui/Toast'
 
 function ProgressBar({ percent }) {
   return (
-    <div className="w-full bg-gray-100 rounded-full h-2.5">
+    <div
+      className="w-full rounded-full h-2"
+      style={{ background: LIB.parchmentDark }}
+    >
       <div
-        className="bg-[#7c3aed] h-2.5 rounded-full transition-all duration-500"
-        style={{ width: `${percent}%` }}
+        className="h-2 rounded-full transition-all duration-500"
+        style={{ width: `${percent}%`, background: LIB.gold }}
       />
     </div>
   )
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth()
-  const [progressList, setProgressList] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => { fetchProgress() }, [user])
-
-  const fetchProgress = async () => {
-    // 공식 단어장 진행률
-    const { data: officialWbs } = await supabase
-      .from('official_wordbooks')
-      .select('id, title, major')
-
-    // 나만의 단어장
-    const { data: myWbs } = await supabase
-      .from('user_wordbooks')
-      .select('id, title')
-      .eq('user_id', user.id)
-
-    const allWbs = [
-      ...(officialWbs ?? []).map(w => ({ ...w, type: 'official' })),
-      ...(myWbs ?? []).map(w => ({ ...w, type: 'user' })),
-    ]
-
-    // 각 단어장의 전체 단어 수 / 학습 완료 단어 수 계산 (SBI-U04)
-    const results = await Promise.all(
-      allWbs.map(async (wb) => {
-        const table = wb.type === 'official' ? 'official_words' : 'user_words'
-        const { count: total } = await supabase
-          .from(table)
-          .select('id', { count: 'exact', head: true })
-          .eq('wordbook_id', wb.id)
-
-        // 학습 완료 = 퀴즈에서 정답 처리된 단어
-        const { count: completed } = await supabase
-          .from('word_progress')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('wordbook_id', wb.id)
-          .eq('is_completed', true)
-
-        const percent = total > 0 ? Math.round(((completed ?? 0) / total) * 100) : 0
-        return { ...wb, total: total ?? 0, completed: completed ?? 0, percent }
-      })
-    )
-
-    setProgressList(results)
-    setLoading(false)
-  }
+  const {
+    progressList,
+    progressLoading,
+    attendedDates,
+    streak,
+    checkedToday,
+    attendanceLoading,
+    checkingIn,
+    toast,
+    handleCheckIn,
+    dismissToast,
+    getGridStartDate,
+  } = useDashboard()
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-[#1a1a2e] mb-1">학습 진행률</h1>
-      <p className="text-sm text-gray-400 mb-6">단어장별 학습 완료 현황</p>
+    <div
+      className="min-h-screen"
+      style={{ background: `linear-gradient(135deg, ${LIB.parchment}, ${LIB.cream})` }}
+    >
+      <div className="p-6 max-w-3xl mx-auto">
+        {/* 페이지 타이틀 */}
+        <h1
+          className="text-2xl font-bold mb-1"
+          style={{ color: LIB.ink }}
+        >
+          대시보드
+        </h1>
+        <p className="text-sm mb-6" style={{ color: LIB.inkLight }}>
+          출석 현황 및 학습 진행률을 확인하세요
+        </p>
 
-      {loading ? (
-        <p className="text-gray-400 text-sm">불러오는 중...</p>
-      ) : progressList.length === 0 ? (
-        <div className="bg-white rounded-2xl p-10 text-center text-gray-400">
-          <p className="text-4xl mb-3">📊</p>
-          <p className="text-sm">단어장이 없습니다.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {progressList.map(wb => (
-            <div key={wb.id} className="bg-white rounded-2xl shadow-sm p-5 border border-gray-100">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <span className="text-sm font-semibold text-gray-800">{wb.title}</span>
-                  <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${wb.type === 'official' ? 'bg-blue-50 text-blue-500' : 'bg-purple-50 text-purple-500'}`}>
-                    {wb.type === 'official' ? (wb.major ?? '공식') : 'AI 생성'}
-                  </span>
-                </div>
-                <span className="text-sm font-bold text-[#7c3aed]">{wb.percent}%</span>
-              </div>
-              <ProgressBar percent={wb.percent} />
-              <p className="text-xs text-gray-400 mt-1.5">
-                {wb.completed} / {wb.total} 단어 완료
+        {/* 출석 스트릭 섹션 */}
+        <section className="mb-8">
+          <h2
+            className="text-base font-semibold mb-3"
+            style={{ color: LIB.wood }}
+          >
+            출석 현황
+          </h2>
+          <AttendanceStreak
+            attendedDates={attendedDates}
+            streak={streak}
+            checkedToday={checkedToday}
+            loading={attendanceLoading}
+            checkingIn={checkingIn}
+            getGridStartDate={getGridStartDate}
+            onCheckIn={handleCheckIn}
+          />
+        </section>
+
+        {/* 학습 진행률 섹션 */}
+        <section>
+          <h2
+            className="text-base font-semibold mb-3"
+            style={{ color: LIB.wood }}
+          >
+            학습 진행률
+          </h2>
+          <p className="text-xs mb-4" style={{ color: LIB.inkLight }}>
+            단어장별 학습 완료 현황
+          </p>
+
+          {progressLoading ? (
+            <div
+              className="rounded-2xl p-10 text-center text-sm"
+              style={{ background: LIB.cream, color: LIB.inkLight }}
+            >
+              불러오는 중...
+            </div>
+          ) : progressList.length === 0 ? (
+            <div
+              className="rounded-2xl p-10 text-center"
+              style={{ background: LIB.cream, border: `1px solid ${LIB.shelfLine}` }}
+            >
+              <p className="text-sm" style={{ color: LIB.inkLight }}>
+                단어장이 없습니다.
               </p>
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="space-y-4">
+              {progressList.map(wb => (
+                <div
+                  key={wb.id}
+                  className="rounded-2xl p-5"
+                  style={{
+                    background: LIB.cream,
+                    border: `1px solid ${LIB.shelfLine}`,
+                    boxShadow: '0 2px 8px rgba(92,58,30,0.06)',
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <span
+                        className="text-sm font-semibold"
+                        style={{ color: LIB.ink }}
+                      >
+                        {wb.title}
+                      </span>
+                      <span
+                        className="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={
+                          wb.type === 'official'
+                            ? { background: '#eff6ff', color: '#3b82f6' }
+                            : { background: LIB.parchmentDark, color: LIB.inkMid }
+                        }
+                      >
+                        {wb.type === 'official' ? (wb.major ?? '공식') : 'AI 생성'}
+                      </span>
+                    </div>
+                    <span
+                      className="text-sm font-bold"
+                      style={{ color: LIB.gold }}
+                    >
+                      {wb.percent}%
+                    </span>
+                  </div>
+                  <ProgressBar percent={wb.percent} />
+                  <p
+                    className="text-xs mt-1.5"
+                    style={{ color: LIB.inkLight }}
+                  >
+                    {wb.completed} / {wb.total} 단어 완료
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* 책갈피 획득 토스트 */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          onClose={dismissToast}
+        />
       )}
     </div>
   )
 }
-
