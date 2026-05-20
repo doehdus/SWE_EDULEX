@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useReward } from '../context/RewardContext'
 
 export default function AttendanceStreak() {
   const { user } = useAuth()
+  const reward = useReward()
   const [checkedToday, setCheckedToday] = useState(false)
   const [streak, setStreak] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [rewardMsg, setRewardMsg] = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -53,14 +54,13 @@ export default function AttendanceStreak() {
     if (checkedToday || loading) return
     setLoading(true)
 
-    // DB 함수로 출석 + 책갈피 트랜잭션 처리 (SBI-H02)
-    const { error } = await supabase.rpc('check_attendance', { p_user_id: user.id })
+    // DB 함수로 출석 + 책갈피 + 칭호 트랜잭션 처리 (SBI-H02 / T04)
+    const { data, error } = await supabase.rpc('check_attendance', { p_user_id: user.id })
 
     if (!error) {
       setCheckedToday(true)
       setStreak(s => s + 1)
-      setRewardMsg('+10 책갈피 획득!')
-      setTimeout(() => setRewardMsg(''), 2500)
+      reward.pushFromRpcResponse(data)
     }
     setLoading(false)
   }
@@ -103,11 +103,6 @@ export default function AttendanceStreak() {
         ))}
       </div>
 
-      {rewardMsg && (
-        <p className="text-center text-yellow-600 text-sm font-semibold mt-3 animate-bounce">
-          ⭐ {rewardMsg}
-        </p>
-      )}
     </div>
   )
 }

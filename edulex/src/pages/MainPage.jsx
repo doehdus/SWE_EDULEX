@@ -84,7 +84,7 @@ function DayCircle({ date, todayStr, attendedDates }) {
   )
 }
 
-function StreakBar({ last7Days, today, streak, checkedToday, loading, rewardMsg, onAttendance, attendedDates }) {
+function StreakBar({ last7Days, today, streak, checkedToday, loading, onAttendance, attendedDates }) {
   const todayStr = today()
   const [btnHover, setBtnHover] = useState(false)
   const [btnPress, setBtnPress] = useState(false)
@@ -157,11 +157,6 @@ function StreakBar({ last7Days, today, streak, checkedToday, loading, rewardMsg,
             : '출석 도장'
           }
         </button>
-        {rewardMsg && (
-          <p className="text-[11px] font-bold animate-bounce whitespace-nowrap flex items-center gap-1" style={{ color: LIB.goldLight }}>
-            <Bookmark size={11} fill="currentColor" /> {rewardMsg}
-          </p>
-        )}
       </div>
     </div>
   )
@@ -276,7 +271,7 @@ function RecentCards({ recentWordbook, recentQuiz }) {
 export default function MainPage() {
   const {
     wordbookCount, setWordbookCount,
-    streak, checkedToday, loading, rewardMsg,
+    streak, checkedToday, loading,
     recentWordbook, recentQuiz,
     last7Days, today,
     attendedDates,
@@ -301,7 +296,6 @@ export default function MainPage() {
           streak={streak}
           checkedToday={checkedToday}
           loading={loading}
-          rewardMsg={rewardMsg}
           onAttendance={handleAttendance}
           attendedDates={attendedDates}
         />
