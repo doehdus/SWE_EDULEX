@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { BookOpen, Bot, Lock, Check, Bookmark, Trophy, BookMarked, Dumbbell, RotateCcw } from 'lucide-react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
-import { useReward } from '../context/RewardContext'
 import { LIB, BOOK_COLORS } from '../constants/theme'
 
 // ── 유틸 ──────────────────────────────────────────────────────────
@@ -411,7 +410,6 @@ function ResultView({ answers, total, saving, onRetry }) {
 
 export default function QuizPage() {
   const { user } = useAuth()
-  const reward = useReward()
   const [step, setStep]             = useState('select')
   const [wordbooks, setWordbooks]   = useState([])
   const [selectedWb, setSelectedWb] = useState(null)
@@ -477,7 +475,7 @@ export default function QuizPage() {
     const correctCount = finalAnswers.filter(a => a.correct).length
     const score        = Math.round((correctCount / questions.length) * 100)
 
-    const { data } = await supabase.rpc('save_quiz_result', {
+    await supabase.rpc('save_quiz_result', {
       p_user_id:       user.id,
       p_wordbook_id:   selectedWb.id,
       p_wordbook_type: selectedWb.type,
@@ -485,7 +483,6 @@ export default function QuizPage() {
       p_total:         questions.length,
       p_correct:       correctCount,
     })
-    reward.pushFromRpcResponse(data)
 
     setSaving(false)
     setStep('result')

@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
-import { useReward } from '../context/RewardContext'
 
 const todayStr = () => new Date().toISOString().split('T')[0]
 
 export function useMainPage() {
   const { user } = useAuth()
-  const reward = useReward()
   const [wordbookCount, setWordbookCount] = useState(0)
   const [streak, setStreak]               = useState(0)
   const [checkedToday, setCheckedToday]   = useState(false)
   const [loading, setLoading]             = useState(false)
+  const [rewardMsg, setRewardMsg]         = useState('')
   const [recentWordbook, setRecentWordbook] = useState(null)
   const [recentQuiz, setRecentQuiz]       = useState(null)
   const [attendedDates, setAttendedDates] = useState(new Set())
@@ -87,12 +86,13 @@ export function useMainPage() {
   const handleAttendance = async () => {
     if (checkedToday || loading) return
     setLoading(true)
-    const { data, error } = await supabase.rpc('check_attendance', { p_user_id: user.id })
+    const { error } = await supabase.rpc('check_attendance', { p_user_id: user.id })
     if (!error) {
       setCheckedToday(true)
       setStreak(s => s + 1)
       setAttendedDates(prev => new Set([...prev, todayStr()]))
-      reward.pushFromRpcResponse(data)
+      setRewardMsg('+10 책갈피 획득!')
+      setTimeout(() => setRewardMsg(''), 2500)
     }
     setLoading(false)
   }
@@ -105,7 +105,7 @@ export function useMainPage() {
 
   return {
     wordbookCount, setWordbookCount,
-    streak, checkedToday, loading,
+    streak, checkedToday, loading, rewardMsg,
     recentWordbook, recentQuiz,
     last7Days, today: todayStr,
     attendedDates,
