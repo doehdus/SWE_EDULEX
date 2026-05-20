@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useReward } from '../context/RewardContext'
 
 const todayStr = () => new Date().toISOString().split('T')[0]
 
@@ -13,6 +14,7 @@ function getGridStartDate() {
 
 export function useMainPage() {
   const { user } = useAuth()
+  const reward = useReward()
   const [wordbookCount, setWordbookCount] = useState(0)
   const [streak, setStreak]               = useState(0)
   const [checkedToday, setCheckedToday]   = useState(false)
