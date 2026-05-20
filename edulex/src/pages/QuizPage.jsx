@@ -1,12 +1,22 @@
+
 import { useEffect, useState } from 'react'
 import {
   BookOpen, Bot, Lock, Check, Bookmark, Trophy, BookMarked, Dumbbell, RotateCcw,
   ChevronDown, ChevronUp, TrendingUp, RefreshCw,
 } from 'lucide-react'
+
+import { useEffect, useRef, useState } from 'react'
+import { BookOpen, Bot, Lock, Check, Bookmark, Trophy, BookMarked, Dumbbell, RotateCcw } from 'lucide-react'
+
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useReward } from '../context/RewardContext'
 import { LIB, BOOK_COLORS } from '../constants/theme'
+
 import { useWordbookAchievement } from '../hooks/useWordbookAchievement'
+
+import { useStudyTime } from '../hooks/useStudyTime'
+
 
 // ── 유틸 ──────────────────────────────────────────────────────────
 
@@ -457,7 +467,12 @@ function ResultView({ answers, total, saving, onRetry, quizResult, activeLevel, 
 // ── 메인 ─────────────────────────────────────────────────────────
 
 export default function QuizPage() {
+
   const { user }                    = useAuth()
+
+  const { user } = useAuth()
+  const reward = useReward()
+
   const [step, setStep]             = useState('select')
   const [wordbooks, setWordbooks]   = useState([])
   const [selectedWb, setSelectedWb] = useState(null)
@@ -475,7 +490,14 @@ export default function QuizPage() {
   const { progress, refetch } = useWordbookAchievement(user?.id, achievementWbId)
   const isReviewMode = progress?.total > 0 && progress?.graduated_count === progress?.total
 
+  const sessionIdRef = useRef(null)
+  const { startSession, endSession } = useStudyTime(user?.id)
+
   useEffect(() => { fetchWordbooks() }, [user])
+
+  useEffect(() => {
+    return () => { if (sessionIdRef.current) endSession(sessionIdRef.current) }
+  }, [endSession])
 
   const fetchWordbooks = async () => {
     const [{ data: official }, { data: mine }] = await Promise.all([
@@ -573,6 +595,7 @@ export default function QuizPage() {
     setCurrent(0)
     setChosen(null)
     setStep('quiz')
+    sessionIdRef.current = await startSession('quiz')
   }
 
   const handleChoose = (choice) => {
@@ -595,6 +618,7 @@ export default function QuizPage() {
   const finishQuiz = async (finalAnswers) => {
     setSaving(true)
     setAnswers(finalAnswers)
+
     const correctCount   = finalAnswers.filter(a => a.correct).length
     const score          = Math.round((correctCount / questions.length) * 100)
     const correctWordIds = finalAnswers
@@ -602,16 +626,29 @@ export default function QuizPage() {
       .filter(Boolean)
 
     const params = {
+
+    await endSession(sessionIdRef.current)
+    sessionIdRef.current = null
+    const correctCount = finalAnswers.filter(a => a.correct).length
+    const score        = Math.round((correctCount / questions.length) * 100)
+
+    const { data } = await supabase.rpc('save_quiz_result', {
+
       p_user_id:       user.id,
       p_wordbook_id:   selectedWb.id,
       p_wordbook_type: selectedWb.type,
       p_score:         score,
       p_total:         questions.length,
       p_correct:       correctCount,
+
     }
 
     params.p_level            = activeLevel
     params.p_correct_word_ids = correctWordIds
+
+    })
+    reward.pushFromRpcResponse(data)
+
 
     const { data } = await supabase.rpc('save_quiz_result', params)
     setQuizResult(data)

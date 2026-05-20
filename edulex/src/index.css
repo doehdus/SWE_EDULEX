@@ -19,3 +19,38 @@ body {
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
+
+/* ── 칭호 티어 애니메이션 (SBI-T01) ────────────────────────────── */
+
+/* Gold 티어 — 잔잔한 글로우 펄스 */
+@keyframes titleGlow {
+  0%, 100% { box-shadow: 0 0 6px rgba(201,168,76,0.40); }
+  50%      { box-shadow: 0 0 12px rgba(201,168,76,0.75); }
+}
+
+/* Platinum 티어 — 부유 모션 (translateY 미세 진동) */
+@keyframes titleFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+
+/* Platinum 티어 — 파티클 반짝임 (TitlePlate ::before/::after 에 적용) */
+@keyframes titleSparkle {
+  0%, 100% { opacity: 0; transform: scale(0.6); }
+  50%      { opacity: 1; transform: scale(1); }
+}
+
+/* 책갈피 획득 토스트 — 위로 떠오르며 페이드 아웃 */
+@keyframes bookmarkRise {
+  0%   { transform: translate(-50%, 0)     scale(0.9); opacity: 0; }
+  15%  { transform: translate(-50%, -8px)  scale(1.05); opacity: 1; }
+  85%  { transform: translate(-50%, -30px) scale(1);    opacity: 1; }
+  100% { transform: translate(-50%, -52px) scale(0.96); opacity: 0; }
+}
+
+/* 칭호 획득 모달 — 중앙 정렬 유지하면서 scale + opacity 만 변경 */
+@keyframes titleEarnedIn {
+  0%   { transform: scale(0.85); opacity: 0; }
+  60%  { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
