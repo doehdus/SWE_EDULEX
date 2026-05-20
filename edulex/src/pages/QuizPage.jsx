@@ -796,7 +796,6 @@ export default function QuizPage() {
   )
   if (step === 'quiz') return (
     <QuizView question={questions[current]} current={current} total={questions.length} chosen={chosen} onChoose={handleChoose} activeLevel={activeLevel} hasBookAnim={hasBookAnim} stackedBooks={stackedBooks} isToppling={isToppling} />
-    <QuizView question={questions[current]} current={current} total={questions.length} chosen={chosen} onChoose={handleChoose} activeLevel={activeLevel} />
   )
   if (step === 'result') return (
     <ResultView
