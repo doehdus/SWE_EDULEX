@@ -11,6 +11,9 @@ verify_jwt = false
 
 [functions.change-password]
 verify_jwt = false
+SBI-A02]유저-목록-조회검색-전공분포-시각화
 
 [functions.delete-user]
 verify_jwt = false
+
+develop

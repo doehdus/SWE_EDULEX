@@ -35,19 +35,18 @@ Database → Replication → `users` 테이블 Enable
 ## 6단계 — Edge Function 배포 (PDF→AI)
 
 ```bash
-npx supabase login
+npx supabase logins
 npx supabase link --project-ref 프로젝트ID
 npx supabase secrets set GEMINI_API_KEY=AIza...
 npx supabase functions deploy create-wordbook-from-pdf
 ```
-
 ## 7단계 — 관리자 계정 설정
 
 1. 앱에서 일반 회원가입 후
 2. Supabase → Table Editor → users 테이블
 3. 해당 row의 `role` 컬럼을 `admin` 으로 수정
 
-## 8단계 — 앱 실행
+## 8단계 — 앱 실행np
 
 ```bash
 npm run dev

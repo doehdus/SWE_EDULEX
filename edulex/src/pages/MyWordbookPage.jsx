@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Trash2, BookOpen, Search, Sparkles, Hash, X } from 'lucide-react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -6,6 +6,7 @@ import PdfUploadBar from '../components/PdfUploadBar'
 import { ConfirmModal } from '../components/ui/Modal'
 import { LoadingState, EmptyState } from '../components/ui/StateViews'
 import { BOOK_COLORS } from '../constants/theme'
+import { useStudyTime } from '../hooks/useStudyTime'
 
 // ── 사이드바 아이템 ───────────────────────────────────────────────
 
@@ -254,10 +255,12 @@ function WordModal({ word, idx, total, color, pageFlip, flipDir, onPrev, onNext,
           </div>
 
           <div className="space-y-3">
-            {word.general_meaning && (
+            {(word.general_meaning || word.general_example) && (
               <div className="rounded-2xl p-4" style={{ background: color.accent + '22', border: `1px solid ${color.accent}` }}>
                 <p className="text-[9px] font-black uppercase tracking-[0.18em] mb-1.5" style={{ color: color.spine + 'aa' }}>일반적 의미</p>
-                <p className="text-sm font-semibold leading-relaxed select-text" style={{ color: '#2d1b00' }}>{word.general_meaning}</p>
+                {word.general_meaning && (
+                  <p className="text-sm font-semibold leading-relaxed select-text" style={{ color: '#2d1b00' }}>{word.general_meaning}</p>
+                )}
                 {word.general_example && (
                   <p className="text-xs mt-2 italic leading-relaxed pl-3 border-l-2 select-text" style={{ color: '#8b6e4e', borderColor: color.accent }}>
                     "{word.general_example}"
@@ -334,6 +337,8 @@ function ModalNavBtn({ onClick, disabled, color, children }) {
 
 export default function MyWordbookPage() {
   const { user } = useAuth()
+  const sessionIdRef = useRef(null)
+  const { startSession, endSession } = useStudyTime(user?.id)
   const [wordbooks, setWordbooks]             = useState([])
   const [selectedWb, setSelectedWb]           = useState(null)
   const [selectedWbColor, setSelectedWbColor] = useState(BOOK_COLORS[0])
@@ -348,6 +353,10 @@ export default function MyWordbookPage() {
   const [wordCounts, setWordCounts]           = useState({})
 
   useEffect(() => { fetchWordbooks() }, [user])
+
+  useEffect(() => {
+    return () => { if (sessionIdRef.current) endSession(sessionIdRef.current) }
+  }, [endSession])
 
   const fetchWordbooks = async () => {
     const { data } = await supabase
@@ -366,14 +375,19 @@ export default function MyWordbookPage() {
   }
 
   const selectWordbook = async (wb, colorIdx) => {
+    if (sessionIdRef.current) await endSession(sessionIdRef.current)
     setSelectedWb(wb)
     setSelectedWbColor(BOOK_COLORS[colorIdx % BOOK_COLORS.length])
     setSelectedWord(null)
     setSelectedIdx(null)
     setModalOpen(false)
     setLoading(true)
-    const { data } = await supabase.from('user_words').select('*').eq('wordbook_id', wb.id)
+    const [{ data }, id] = await Promise.all([
+      supabase.from('user_words').select('*').eq('wordbook_id', wb.id),
+      startSession('wordbook'),
+    ])
     setWords(data ?? [])
+    sessionIdRef.current = id
     setLoading(false)
   }
 
