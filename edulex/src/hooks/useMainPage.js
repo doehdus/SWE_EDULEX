@@ -1,69 +1,78 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useReward } from '../context/RewardContext'
 
 const todayStr = () => new Date().toISOString().split('T')[0]
 
+function getGridStartDate() {
+  const d = new Date()
+  d.setDate(d.getDate() - 364)
+  d.setDate(d.getDate() - d.getDay()) // 일요일 시작
+  return d
+}
+
 export function useMainPage() {
   const { user } = useAuth()
+  const reward = useReward()
   const [wordbookCount, setWordbookCount] = useState(0)
   const [streak, setStreak]               = useState(0)
   const [checkedToday, setCheckedToday]   = useState(false)
-  const [loading, setLoading]             = useState(false)
+  const [attendanceLoading, setAttendanceLoading] = useState(true)
+  const [checkingIn, setCheckingIn]       = useState(false)
   const [rewardMsg, setRewardMsg]         = useState('')
   const [recentWordbook, setRecentWordbook] = useState(null)
   const [recentQuiz, setRecentQuiz]       = useState(null)
-  const [attendedDates, setAttendedDates] = useState(new Set())
+  const [attendedDates, setAttendedDates] = useState([])
 
-  useEffect(() => {
+  const fetchAnnualAttendance = useCallback(async () => {
     if (!user) return
-    fetchWordbookCount()
-    checkTodayAttendance()
-    calculateStreak()
-    fetchRecent()
+    setAttendanceLoading(true)
+
+    const startDate = getGridStartDate().toISOString().split('T')[0]
+    const today = todayStr()
+
+    const { data, error } = await supabase.rpc('get_annual_attendance', {
+      p_user_id: user.id,
+    })
+
+    if (error) {
+      // fallback: 직접 조회
+      const { data: fallback } = await supabase
+        .from('attendance')
+        .select('date')
+        .eq('user_id', user.id)
+        .gte('date', startDate)
+        .lte('date', today)
+      const dates = (fallback ?? []).map(r => r.date)
+      setAttendedDates(dates)
+      setCheckedToday(dates.includes(today))
+    } else {
+      const dates = (data ?? []).filter(r => r.attended).map(r => r.date)
+      setAttendedDates(dates)
+      setCheckedToday(dates.includes(today))
+    }
+
+    setAttendanceLoading(false)
   }, [user])
 
-  const fetchWordbookCount = () =>
+  const fetchStreak = useCallback(async () => {
+    if (!user) return
+    const { data } = await supabase.rpc('get_streak_count', { p_user_id: user.id })
+    if (data !== null && data !== undefined) {
+      setStreak(data)
+    }
+  }, [user])
+
+  const fetchWordbookCount = useCallback(() =>
     supabase
       .from('user_wordbooks')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .then(({ count }) => setWordbookCount(count ?? 0))
+  , [user])
 
-  const checkTodayAttendance = async () => {
-    const { data } = await supabase
-      .from('attendance')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('date', todayStr())
-      .maybeSingle()
-    setCheckedToday(!!data)
-  }
-
-  const calculateStreak = async () => {
-    const { data } = await supabase
-      .from('attendance')
-      .select('date')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false })
-      .limit(30)
-
-    if (!data || data.length === 0) { setStreak(0); return }
-
-    setAttendedDates(new Set(data.map(r => r.date)))
-
-    let count  = 0
-    let cursor = new Date(todayStr())
-    for (const { date } of data) {
-      const d = new Date(date)
-      if ((cursor - d) / 86400000 > 1) break
-      count++
-      cursor = d
-    }
-    setStreak(count)
-  }
-
-  const fetchRecent = async () => {
+  const fetchRecent = useCallback(async () => {
     const { data: wb } = await supabase
       .from('user_wordbooks')
       .select('id, title')
@@ -81,34 +90,38 @@ export function useMainPage() {
       .limit(1)
       .maybeSingle()
     setRecentQuiz(qz)
-  }
+  }, [user])
 
-  const handleAttendance = async () => {
-    if (checkedToday || loading) return
-    setLoading(true)
-    const { error } = await supabase.rpc('check_attendance', { p_user_id: user.id })
+  useEffect(() => {
+    if (!user) return
+    fetchWordbookCount()
+    fetchAnnualAttendance()
+    fetchStreak()
+    fetchRecent()
+  }, [user, fetchWordbookCount, fetchAnnualAttendance, fetchStreak, fetchRecent])
+
+  const handleAttendance = useCallback(async () => {
+    if (checkedToday || checkingIn || !user) return
+    setCheckingIn(true)
+    const { data, error } = await supabase.rpc('check_attendance', { p_user_id: user.id })
     if (!error) {
+      const today = todayStr()
       setCheckedToday(true)
+      setAttendedDates(prev => [...prev, today])
       setStreak(s => s + 1)
-      setAttendedDates(prev => new Set([...prev, todayStr()]))
-      setRewardMsg('+10 책갈피 획득!')
+      const gained = data?.gained_bookmark ?? 100
+      setRewardMsg(`책갈피 ${gained}개 획득!`)
       setTimeout(() => setRewardMsg(''), 2500)
     }
-    setLoading(false)
-  }
-
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (6 - i))
-    return d.toISOString().split('T')[0]
-  })
+    setCheckingIn(false)
+  }, [checkedToday, checkingIn, user])
 
   return {
     wordbookCount, setWordbookCount,
-    streak, checkedToday, loading, rewardMsg,
+    streak, checkedToday, attendanceLoading, checkingIn, rewardMsg,
     recentWordbook, recentQuiz,
-    last7Days, today: todayStr,
     attendedDates,
     handleAttendance,
+    getGridStartDate,
   }
 }

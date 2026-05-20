@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { MajorProvider } from './context/MajorContext'
+import { RewardProvider } from './context/RewardContext'
 import { ProtectedRoute, AdminRoute, PublicOnlyRoute } from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
 
@@ -14,15 +15,14 @@ import MyWordbookPage from './pages/MyWordbookPage'
 import QuizPage from './pages/QuizPage'
 import DashboardPage from './pages/DashboardPage'
 import AdminWordbookPage from './pages/AdminWordbookPage'
-SBI-L03]-비밀번호찾기
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
-
 import CommunityPage from './pages/CommunityPage'
 import RankingPage from './pages/RankingPage'
 import SuggestionsPage from './pages/SuggestionsPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
- develop
+import ShopPage from './pages/ShopPage'
+import TitleTestPage from './pages/TitleTestPage'
 
 function UserLayout({ children }) {
   return (
@@ -38,6 +38,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <MajorProvider>
+         <RewardProvider>
           <Routes>
             {/* 이메일 인증 콜백 — 가드 없음 */}
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
@@ -91,6 +92,16 @@ export default function App() {
                 <UserLayout><SuggestionsPage /></UserLayout>
               </ProtectedRoute>
             } />
+            <Route path="/shop" element={
+              <ProtectedRoute>
+                <UserLayout><ShopPage /></UserLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/title-test" element={
+              <ProtectedRoute>
+                <UserLayout><TitleTestPage /></UserLayout>
+              </ProtectedRoute>
+            } />
 
             {/* 관리자 보호 라우트 */}
             <Route path="/admin" element={
@@ -99,6 +110,7 @@ export default function App() {
               </AdminRoute>
             } />
           </Routes>
+         </RewardProvider>
         </MajorProvider>
       </AuthProvider>
     </BrowserRouter>
