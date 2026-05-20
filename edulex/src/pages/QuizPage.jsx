@@ -1,12 +1,9 @@
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   BookOpen, Bot, Lock, Check, Bookmark, Trophy, BookMarked, Dumbbell, RotateCcw,
   ChevronDown, ChevronUp, TrendingUp, RefreshCw,
 } from 'lucide-react'
-
-import { useEffect, useRef, useState } from 'react'
-import { BookOpen, Bot, Lock, Check, Bookmark, Trophy, BookMarked, Dumbbell, RotateCcw } from 'lucide-react'
 
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -499,8 +496,6 @@ function ResultView({ answers, total, saving, onRetry, quizResult, activeLevel, 
 
 export default function QuizPage() {
 
-  const { user }                    = useAuth()
-
   const { user } = useAuth()
   const reward = useReward()
 
@@ -661,32 +656,22 @@ export default function QuizPage() {
       .map((a, i) => a.correct ? questions[i].id : null)
       .filter(Boolean)
 
-    const params = {
-
     await endSession(sessionIdRef.current)
     sessionIdRef.current = null
-    const correctCount = finalAnswers.filter(a => a.correct).length
-    const score        = Math.round((correctCount / questions.length) * 100)
 
-    const { data } = await supabase.rpc('save_quiz_result', {
-
-      p_user_id:       user.id,
-      p_wordbook_id:   selectedWb.id,
-      p_wordbook_type: selectedWb.type,
-      p_score:         score,
-      p_total:         questions.length,
-      p_correct:       correctCount,
-
+    const params = {
+      p_user_id:         user.id,
+      p_wordbook_id:     selectedWb.id,
+      p_wordbook_type:   selectedWb.type,
+      p_score:           score,
+      p_total:           questions.length,
+      p_correct:         correctCount,
+      p_level:           activeLevel,
+      p_correct_word_ids: correctWordIds,
     }
 
-    params.p_level            = activeLevel
-    params.p_correct_word_ids = correctWordIds
-
-    })
-    reward.pushFromRpcResponse(data)
-
-
     const { data } = await supabase.rpc('save_quiz_result', params)
+    reward.pushFromRpcResponse(data)
     setQuizResult(data)
     await refetch()
     fetchWbLevelCounts(wordbooks)
