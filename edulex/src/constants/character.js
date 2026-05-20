@@ -157,6 +157,7 @@ export const CATEGORY_DIRECTION = {
   wings:  2,
 }
 
+
 // 특수효과 아이템 (슬롯 없음 — owned_items 보유 여부만 사용)
 export const QUIZ_BOOK_ANIM_ID = 'quiz_book_anim'
 
@@ -167,3 +168,4 @@ export const EFFECT_ITEMS = {
     description: '정답 시 책이 쌓이고 오답 시 무너지는 애니메이션',
   },
 }
+

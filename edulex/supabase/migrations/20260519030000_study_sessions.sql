@@ -1,4 +1,4 @@
-CREATE TABLE study_sessions (
+CREATE TABLE IF NOT EXISTS study_sessions (
   id           uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id      uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   session_type text NOT NULL CHECK (session_type IN ('quiz', 'wordbook')),
@@ -8,8 +8,11 @@ CREATE TABLE study_sessions (
 
 ALTER TABLE study_sessions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "select_own" ON study_sessions;
 CREATE POLICY "select_own" ON study_sessions FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "insert_own" ON study_sessions;
 CREATE POLICY "insert_own" ON study_sessions FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "update_own" ON study_sessions;
 CREATE POLICY "update_own" ON study_sessions FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE OR REPLACE FUNCTION get_daily_study_time(

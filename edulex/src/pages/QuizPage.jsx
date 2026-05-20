@@ -1,13 +1,26 @@
+
+
 import { useEffect, useState } from 'react'
 import {
   BookOpen, Bot, Lock, Check, Bookmark, Trophy, BookMarked, Dumbbell, RotateCcw,
   ChevronDown, ChevronUp, TrendingUp, RefreshCw,
 } from 'lucide-react'
+
+
+import { useEffect, useRef, useState } from 'react'
+import { BookOpen, Bot, Lock, Check, Bookmark, Trophy, BookMarked, Dumbbell, RotateCcw } from 'lucide-react'
+
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useReward } from '../context/RewardContext'
 import { LIB, BOOK_COLORS } from '../constants/theme'
 import { useWordbookAchievement } from '../hooks/useWordbookAchievement'
 import { QUIZ_BOOK_ANIM_ID } from '../constants/character'
+
+import { useWordbookAchievement } from '../hooks/useWordbookAchievement'
+
+import { useStudyTime } from '../hooks/useStudyTime'
+
 
 // ── 유틸 ──────────────────────────────────────────────────────────
 
@@ -20,10 +33,9 @@ function shuffle(arr) {
   return a
 }
 
-function buildQuestions(allWords) {
-  const pool = shuffle(allWords).slice(0, Math.min(10, allWords.length))
-  return pool.map(word => {
-    const wrongs  = shuffle(allWords.filter(w => w.id !== word.id)).slice(0, 3).map(w => w.english)
+function buildQuestions(pool, source) {
+  return shuffle(pool).map(word => {
+    const wrongs  = shuffle(source.filter(w => w.id !== word.id)).slice(0, 3).map(w => w.english)
     const choices = shuffle([word.english, ...wrongs])
     return { id: word.id, question: word.major_meaning, answer: word.english, choices }
   })
@@ -68,6 +80,7 @@ function NoWordsModal({ level, onClose }) {
 // ── 선택 화면 ─────────────────────────────────────────────────────
 
 function SelectView({ wordbooks, selectedWb, onSelect, onStart, activeLevel, onLevelChange, progress, isReviewMode, wbLevelCounts }) {
+function SelectView({ wordbooks, selectedWb, onSelect, onStart, activeLevel, onLevelChange, progress, isReviewMode, wbLevelCounts, wordCountMode, onWordCountModeChange }) {
   const [wbTab, setWbTab]           = useState('official')
   const [lv4Open, setLv4Open]       = useState(false)
 
@@ -276,6 +289,38 @@ function SelectView({ wordbooks, selectedWb, onSelect, onStart, activeLevel, onL
           </div>
         </div>
 
+        {/* ── Step 3: 단어 수 선택 ── */}
+        <div className="mb-6">
+          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: LIB.inkMid }}>
+            Step 3 · 단어 수 선택
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { mode: 'all',  label: '전체', desc: '레벨 단어 전부 출제' },
+              { mode: 'half', label: '절반', desc: '무작위 절반만 출제' },
+            ].map(({ mode, label, desc }) => {
+              const active = wordCountMode === mode
+              return (
+                <button
+                  key={mode}
+                  onClick={() => onWordCountModeChange(mode)}
+                  className="rounded-xl px-4 py-3 text-left transition-all"
+                  style={{
+                    background: active
+                      ? `linear-gradient(135deg, ${LIB.wood} 0%, ${LIB.woodLight} 100%)`
+                      : LIB.parchmentDark,
+                    color: active ? LIB.parchment : LIB.inkMid,
+                    border: `1px solid ${active ? LIB.wood : LIB.shelfLine}`,
+                  }}
+                >
+                  <p className="text-sm font-black">{label}</p>
+                  <p className="text-[11px] mt-0.5 opacity-75">{desc}</p>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         {/* 시작 버튼 */}
         <button
           onClick={onStart}
@@ -373,6 +418,8 @@ function BookStackAnimation({ count, isToppling, total }) {
 
 function QuizView({ question, current, total, chosen, onChoose, activeLevel, hasBookAnim, stackedBooks, isToppling }) {
   return (
+function QuizView({ question, current, total, chosen, onChoose, activeLevel }) {
+  return (
     <div className="min-h-[calc(100vh-72px)] flex items-center justify-center p-6" style={{ background: LIB.parchment }}>
       <div className="w-full max-w-lg">
 
@@ -402,6 +449,7 @@ function QuizView({ question, current, total, chosen, onChoose, activeLevel, has
         {hasBookAnim && (
           <BookStackAnimation count={stackedBooks} isToppling={isToppling} total={total} />
         )}
+
 
         <div className="space-y-3">
           {question.choices.map((choice, i) => {
@@ -535,6 +583,12 @@ function ResultView({ answers, total, saving, onRetry, quizResult, activeLevel, 
 
 export default function QuizPage() {
   const { user, profile }           = useAuth()
+
+  const { user }                    = useAuth()
+
+  const { user } = useAuth()
+  const reward = useReward()
+
   const [step, setStep]             = useState('select')
   const [wordbooks, setWordbooks]   = useState([])
   const [selectedWb, setSelectedWb] = useState(null)
@@ -549,6 +603,11 @@ export default function QuizPage() {
   const [wbLevelCounts, setWbLevelCounts] = useState({})
   const [stackedBooks, setStackedBooks] = useState(0)
   const [isToppling,  setIsToppling]   = useState(false)
+  const [wordCountMode, setWordCountMode] = useState('all')
+
+  const achievementWbId = selectedWb?.id ?? null
+  const { progress, refetch } = useWordbookAchievement(user?.id, achievementWbId)
+  const isReviewMode = progress?.total > 0 && progress?.graduated_count === progress?.total
 
   const hasBookAnim = profile?.owned_items?.includes(QUIZ_BOOK_ANIM_ID) ?? false
 
@@ -650,6 +709,17 @@ export default function QuizPage() {
 
     setQuizResult(null)
     setQuestions(buildQuestions(allWords))
+    if (!allWords || allWords.length === 0) {
+      setNoWordsModal(true)
+      return
+    }
+
+    const pool = wordCountMode === 'half'
+      ? shuffle(allWords).slice(0, Math.ceil(allWords.length / 2))
+      : allWords
+
+    setQuizResult(null)
+    setQuestions(buildQuestions(pool, allWords))
     setAnswers([])
     setCurrent(0)
     setChosen(null)
@@ -687,6 +757,8 @@ export default function QuizPage() {
   const finishQuiz = async (finalAnswers) => {
     setSaving(true)
     setAnswers(finalAnswers)
+
+
     const correctCount   = finalAnswers.filter(a => a.correct).length
     const score          = Math.round((correctCount / questions.length) * 100)
     const correctWordIds = finalAnswers
@@ -694,16 +766,33 @@ export default function QuizPage() {
       .filter(Boolean)
 
     const params = {
+
+
+    const params = {
+
+    await endSession(sessionIdRef.current)
+    sessionIdRef.current = null
+    const correctCount = finalAnswers.filter(a => a.correct).length
+    const score        = Math.round((correctCount / questions.length) * 100)
+
+    const { data } = await supabase.rpc('save_quiz_result', {
+
       p_user_id:       user.id,
       p_wordbook_id:   selectedWb.id,
       p_wordbook_type: selectedWb.type,
       p_score:         score,
       p_total:         questions.length,
       p_correct:       correctCount,
+
+
     }
 
     params.p_level            = activeLevel
     params.p_correct_word_ids = correctWordIds
+
+    })
+    reward.pushFromRpcResponse(data)
+
 
     const { data } = await supabase.rpc('save_quiz_result', params)
     setQuizResult(data)
@@ -725,12 +814,16 @@ export default function QuizPage() {
         progress={progress}
         isReviewMode={isReviewMode}
         wbLevelCounts={wbLevelCounts}
+
+        wordCountMode={wordCountMode}
+        onWordCountModeChange={setWordCountMode}
       />
       {noWordsModal && <NoWordsModal level={activeLevel} onClose={() => setNoWordsModal(false)} />}
     </>
   )
   if (step === 'quiz') return (
     <QuizView question={questions[current]} current={current} total={questions.length} chosen={chosen} onChoose={handleChoose} activeLevel={activeLevel} hasBookAnim={hasBookAnim} stackedBooks={stackedBooks} isToppling={isToppling} />
+    <QuizView question={questions[current]} current={current} total={questions.length} chosen={chosen} onChoose={handleChoose} activeLevel={activeLevel} />
   )
   if (step === 'result') return (
     <ResultView
