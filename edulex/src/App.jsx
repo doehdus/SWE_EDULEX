@@ -14,9 +14,10 @@ import MyWordbookPage from './pages/MyWordbookPage'
 import QuizPage from './pages/QuizPage'
 import DashboardPage from './pages/DashboardPage'
 import AdminWordbookPage from './pages/AdminWordbookPage'
-import ForgotPasswordPage from './pages/ForgotPasswordPage'
-import ResetPasswordPage from './pages/ResetPasswordPage'
-import ChangePasswordPage from './pages/ChangePasswordPage'
+import CommunityPage from './pages/CommunityPage'
+import RankingPage from './pages/RankingPage'
+import SuggestionsPage from './pages/SuggestionsPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
 
 function UserLayout({ children }) {
   return (
@@ -33,13 +34,14 @@ export default function App() {
       <AuthProvider>
         <MajorProvider>
           <Routes>
+            {/* 이메일 인증 콜백 — 가드 없음 */}
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
             {/* 공개 라우트 */}
             <Route path="/landing" element={<PublicOnlyRoute><LandingPage /></PublicOnlyRoute>} />
             <Route path="/signup" element={<PublicOnlyRoute><SignupPage /></PublicOnlyRoute>} />
             <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
             <Route path="/admin/login" element={<PublicOnlyRoute><AdminLoginPage /></PublicOnlyRoute>} />
-            <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPasswordPage /></PublicOnlyRoute>} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* 사용자 보호 라우트 */}
             <Route path="/" element={
@@ -67,10 +69,19 @@ export default function App() {
                 <UserLayout><DashboardPage /></UserLayout>
               </ProtectedRoute>
             } />
-
-            <Route path="/settings/change-password" element={
+            <Route path="/community" element={
               <ProtectedRoute>
-                <UserLayout><ChangePasswordPage /></UserLayout>
+                <UserLayout><CommunityPage /></UserLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/ranking" element={
+              <ProtectedRoute>
+                <UserLayout><RankingPage /></UserLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/suggestions" element={
+              <ProtectedRoute>
+                <UserLayout><SuggestionsPage /></UserLayout>
               </ProtectedRoute>
             } />
 
