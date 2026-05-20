@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Library, NotebookText, FlaskConical, BarChart2, LogOut, Users } from 'lucide-react'
 import { Library, NotebookText, FlaskConical, BarChart2, LogOut, Users, Trophy, MessageSquare, KeyRound } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { LIB } from '../constants/theme'

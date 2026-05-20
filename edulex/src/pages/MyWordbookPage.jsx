@@ -1,8 +1,11 @@
+import { useCallback, useEffect, useState } from 'react'
+import { ChevronLeft, ChevronRight, Trash2, BookOpen, Search, Sparkles, Hash, X, Plus, Edit2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Trash2, BookOpen, Search, Sparkles, Hash, X } from 'lucide-react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
 import PdfUploadBar from '../components/PdfUploadBar'
+import WordEditModal from '../components/WordEditModal'
 import { ConfirmModal } from '../components/ui/Modal'
 import { LoadingState, EmptyState } from '../components/ui/StateViews'
 import { BOOK_COLORS } from '../constants/theme'
@@ -10,7 +13,7 @@ import { useStudyTime } from '../hooks/useStudyTime'
 
 // ── 사이드바 아이템 ───────────────────────────────────────────────
 
-function MySidebarItem({ wb, idx, isSelected, onSelect, onDelete, wordCounts }) {
+function MySidebarItem({ wb, idx, isSelected, onSelect, onDelete, onTogglePublic, wordCounts }) {
   const [hovered, setHovered] = useState(false)
   const color = BOOK_COLORS[idx % BOOK_COLORS.length]
   const count = wordCounts[wb.id] ?? null
@@ -52,34 +55,90 @@ function MySidebarItem({ wb, idx, isSelected, onSelect, onDelete, wordCounts }) 
           className={`ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg ${
             isSelected ? 'hover:bg-white/20 text-white/60 hover:text-white' : 'hover:bg-red-50 text-gray-300 hover:text-red-400'
           }`}
+          title="삭제"
         >
           <Trash2 size={13} strokeWidth={2} />
         </button>
       </div>
+      {/* 공개/비공개 토글 (내가 만든 단어장일 경우에만 표시) */}
+      {!wb.is_shared && (
+        <div className="mt-3 flex items-center justify-between" onClick={e => e.stopPropagation()}>
+          <span className="text-[10px] font-bold" style={{ color: isSelected ? 'rgba(255,255,255,0.8)' : '#8b6e4e' }}>
+            커뮤니티 공유
+          </span>
+          <button
+            onClick={() => onTogglePublic(wb)}
+            className={`w-9 h-5 rounded-full relative transition-colors ${
+              wb.is_public ? (isSelected ? 'bg-white/40' : 'bg-[#8b6e4e]') : (isSelected ? 'bg-white/20' : 'bg-gray-200')
+            }`}
+          >
+            <div
+              className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                wb.is_public ? 'translate-x-4' : 'translate-x-0'
+              }`}
+              style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}
+            />
+          </button>
+        </div>
+      )}
     </button>
   )
 }
 
 // ── 사이드바 ──────────────────────────────────────────────────────
 
-function WordbookSidebar({ wordbooks, selectedWb, onSelect, onDelete, wordCounts }) {
+function WordbookSidebar({ wordbooks, selectedWb, onSelect, onDelete, onTogglePublic, wordCounts }) {
+  const originals = wordbooks.filter(w => !w.is_shared)
+  const shared = wordbooks.filter(w => w.is_shared)
+
   return (
-    <aside className="w-60 shrink-0 flex flex-col h-full">
-      <div className="flex items-center gap-2 mb-4 px-1 shrink-0">
-        <BookOpen size={14} strokeWidth={2} style={{ color: '#8b6e4e' }} />
-        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#8b6e4e' }}>내 단어장</p>
-        <span className="ml-auto text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#e8ddd0', color: '#8b6e4e' }}>
-          {wordbooks.length}
-        </span>
-      </div>
-      <div className="space-y-2 overflow-y-auto flex-1 pr-1">
-        {wordbooks.map((wb, idx) => (
-          <MySidebarItem
-            key={wb.id} wb={wb} idx={idx}
-            isSelected={selectedWb?.id === wb.id}
-            onSelect={onSelect} onDelete={onDelete} wordCounts={wordCounts}
-          />
-        ))}
+    <aside className="w-60 shrink-0 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 overflow-y-auto pr-1 space-y-6 pb-4">
+        {/* 내가 만든 단어장 */}
+        <div>
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <BookOpen size={14} strokeWidth={2} style={{ color: '#8b6e4e' }} />
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#8b6e4e' }}>내 단어장</p>
+            <span className="ml-auto text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#e8ddd0', color: '#8b6e4e' }}>
+              {originals.length}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {originals.map((wb, idx) => (
+              <MySidebarItem
+                key={wb.id} wb={wb} idx={idx}
+                isSelected={selectedWb?.id === wb.id}
+                onSelect={onSelect} onDelete={onDelete} onTogglePublic={onTogglePublic} wordCounts={wordCounts}
+              />
+            ))}
+            {originals.length === 0 && (
+              <p className="text-xs text-center py-2 text-gray-400">없음</p>
+            )}
+          </div>
+        </div>
+
+        {/* 공유받은 단어장 */}
+        <div>
+          <div className="flex items-center gap-2 mb-3 px-1 pt-2 border-t border-[#e8ddd0]">
+            <BookOpen size={14} strokeWidth={2} style={{ color: '#8b6e4e' }} />
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#8b6e4e' }}>공유받은 단어장</p>
+            <span className="ml-auto text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#e8ddd0', color: '#8b6e4e' }}>
+              {shared.length}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {shared.map((wb, idx) => (
+              <MySidebarItem
+                key={wb.id} wb={wb} idx={idx + 10} // offset color index
+                isSelected={selectedWb?.id === wb.id}
+                onSelect={onSelect} onDelete={onDelete} wordCounts={wordCounts}
+              />
+            ))}
+            {shared.length === 0 && (
+              <p className="text-xs text-center py-2 text-gray-400">없음</p>
+            )}
+          </div>
+        </div>
       </div>
     </aside>
   )
@@ -87,7 +146,7 @@ function WordbookSidebar({ wordbooks, selectedWb, onSelect, onDelete, wordCounts
 
 // ── 단어 목록 (그리드) ────────────────────────────────────────────
 
-function WordList({ words, selectedWord, selectedWb, color, onSelectWord }) {
+function WordList({ words, selectedWord, selectedWb, color, onSelectWord, onAddWord, onEditWord, onDeleteWord }) {
   const [query, setQuery] = useState('')
   const filtered = words.filter(w =>
     w.english.toLowerCase().includes(query.toLowerCase()) ||
@@ -102,10 +161,22 @@ function WordList({ words, selectedWord, selectedWb, color, onSelectWord }) {
       <div className="h-1.5 w-full shrink-0" style={{ background: `linear-gradient(90deg, ${color.spine}, ${color.cover})` }} />
 
       <div className="p-5 flex flex-col min-h-0 flex-1">
-        <div className="mb-4 shrink-0">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] mb-1" style={{ color: color.spine }}>단어 목록</p>
-          <p className="text-sm font-extrabold leading-tight line-clamp-1" style={{ color: '#2d1b00' }}>{selectedWb.title}</p>
-          <p className="text-[10px] mt-1 font-medium" style={{ color: '#b09070' }}>총 {words.length}개 · 클릭하면 상세 보기</p>
+        <div className="mb-4 shrink-0 flex items-start justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] mb-1" style={{ color: color.spine }}>단어 목록</p>
+            <p className="text-sm font-extrabold leading-tight line-clamp-1" style={{ color: '#2d1b00' }}>{selectedWb.title}</p>
+            <p className="text-[10px] mt-1 font-medium" style={{ color: '#b09070' }}>총 {words.length}개 · 클릭하면 상세 보기</p>
+          </div>
+          {/* 내 단어장일 경우에만 단어 추가 버튼 표시 */}
+          {!selectedWb.is_shared && (
+            <button
+              onClick={onAddWord}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-transform active:scale-95"
+              style={{ background: color.spine }}
+            >
+              <Plus size={12} strokeWidth={3} /> 단어 추가
+            </button>
+          )}
         </div>
 
         <div className="relative mb-3 shrink-0">
@@ -130,6 +201,9 @@ function WordList({ words, selectedWord, selectedWb, color, onSelectWord }) {
                   key={word.id} word={word} idx={realIdx} color={color}
                   isActive={selectedWord?.id === word.id}
                   onClick={() => onSelectWord(word, realIdx)}
+                  onEdit={() => onEditWord(word)}
+                  onDelete={() => onDeleteWord(word)}
+                  isShared={selectedWb.is_shared}
                 />
               )
             })}
@@ -143,14 +217,13 @@ function WordList({ words, selectedWord, selectedWb, color, onSelectWord }) {
   )
 }
 
-function WordCard({ word, idx, color, isActive, onClick }) {
+function WordCard({ word, idx, color, isActive, onClick, onEdit, onDelete, isShared }) {
   const [hov, setHov] = useState(false)
   return (
-    <button
-      onClick={onClick}
+    <div
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      className="text-left rounded-xl px-3 py-2.5 transition-all select-none"
+      className="text-left rounded-xl px-3 py-2.5 transition-all select-none relative group"
       style={{
         background: isActive ? `linear-gradient(135deg, ${color.spine}, ${color.cover})` : hov ? color.accent + '40' : '#fff',
         border: `1.5px solid ${isActive ? color.spine : hov ? color.accent : '#e8ddd0'}`,
@@ -159,16 +232,35 @@ function WordCard({ word, idx, color, isActive, onClick }) {
         transition: 'all 0.18s cubic-bezier(.34,1.56,.64,1)',
       }}
     >
-      <span className="text-[9px] font-mono font-bold block mb-0.5" style={{ color: isActive ? 'rgba(255,255,255,0.6)' : color.spine + '80' }}>
-        {idx + 1}
-      </span>
-      <p className="text-sm font-bold truncate" style={{ color: isActive ? '#fff' : '#2d1b00' }}>{word.english}</p>
-      {word.general_meaning && (
-        <p className="text-[10px] mt-0.5 truncate font-medium" style={{ color: isActive ? 'rgba(255,255,255,0.75)' : '#b09070' }}>
-          {word.general_meaning}
-        </p>
+      <div onClick={onClick} className="cursor-pointer">
+        <span className="text-[9px] font-mono font-bold block mb-0.5" style={{ color: isActive ? 'rgba(255,255,255,0.6)' : color.spine + '80' }}>
+          {idx + 1}
+        </span>
+        <p className="text-sm font-bold truncate" style={{ color: isActive ? '#fff' : '#2d1b00' }}>{word.english}</p>
+        {word.general_meaning && (
+          <p className="text-[10px] mt-0.5 truncate font-medium" style={{ color: isActive ? 'rgba(255,255,255,0.75)' : '#b09070' }}>
+            {word.general_meaning}
+          </p>
+        )}
+      </div>
+
+      {!isShared && (
+        <div className={`absolute top-2 right-2 flex gap-1 ${hov ? 'opacity-100' : 'opacity-0'} transition-opacity`}>
+          <button
+            onClick={e => { e.stopPropagation(); onEdit() }}
+            className="p-1 rounded bg-white/80 hover:bg-white text-gray-500 hover:text-[#8b6e4e] shadow-sm"
+          >
+            <Edit2 size={12} strokeWidth={2.5} />
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onDelete() }}
+            className="p-1 rounded bg-white/80 hover:bg-white text-gray-500 hover:text-red-500 shadow-sm"
+          >
+            <Trash2 size={12} strokeWidth={2.5} />
+          </button>
+        </div>
       )}
-    </button>
+    </div>
   )
 }
 
@@ -349,7 +441,10 @@ export default function MyWordbookPage() {
   const [pageFlip, setPageFlip]               = useState(false)
   const [flipDir, setFlipDir]                 = useState('next')
   const [showDeleteModal, setShowDeleteModal] = useState(null)
-  const [loading, setLoading]                 = useState(false)
+  const [showDeleteWordModal, setShowDeleteWordModal] = useState(null)
+  const [showWordEditModal, setShowWordEditModal] = useState(false)
+  const [editingWord, setEditingWord] = useState(null)
+  const [loading, setLoading] = useState(false)
   const [wordCounts, setWordCounts]           = useState({})
 
   useEffect(() => { fetchWordbooks() }, [user])
@@ -374,6 +469,21 @@ export default function MyWordbookPage() {
     }
   }
 
+  const togglePublic = async (wb) => {
+    try {
+      const { error } = await supabase.rpc('toggle_wordbook_public', {
+        p_user_id: user.id,
+        p_wordbook_id: wb.id,
+        p_is_public: !wb.is_public
+      })
+      if (error) throw error
+      setWordbooks(prev => prev.map(w => w.id === wb.id ? { ...w, is_public: !w.is_public } : w))
+    } catch (e) {
+      console.error(e)
+      alert('공개 상태 변경에 실패했습니다.')
+    }
+  }
+
   const selectWordbook = async (wb, colorIdx) => {
     if (sessionIdRef.current) await endSession(sessionIdRef.current)
     setSelectedWb(wb)
@@ -381,7 +491,16 @@ export default function MyWordbookPage() {
     setSelectedWord(null)
     setSelectedIdx(null)
     setModalOpen(false)
+    await loadWords(wb.id)
+  }
+
+  const loadWords = async (wbId) => {
     setLoading(true)
+    const { data } = await supabase.from('user_words').select('*').eq('wordbook_id', wbId).order('created_at', { ascending: true })
+    setWords(data ?? [])
+    
+    // Update word count
+    setWordCounts(prev => ({ ...prev, [wbId]: (data ?? []).length }))
     const [{ data }, id] = await Promise.all([
       supabase.from('user_words').select('*').eq('wordbook_id', wb.id),
       startSession('wordbook'),
@@ -418,6 +537,22 @@ export default function MyWordbookPage() {
     if (selectedIdx > 0) openWord(words[selectedIdx - 1], selectedIdx - 1, 'prev')
   }, [selectedIdx, words, openWord])
 
+  const handleDeleteWord = async (word) => {
+    await supabase.from('user_words').delete().eq('id', word.id)
+    setShowDeleteWordModal(null)
+    if (selectedWord?.id === word.id) {
+      setSelectedWord(null)
+      setModalOpen(false)
+    }
+    loadWords(selectedWb.id)
+  }
+
+  const handleWordEditComplete = () => {
+    setShowWordEditModal(false)
+    setEditingWord(null)
+    loadWords(selectedWb.id)
+  }
+
   const totalWords = Object.values(wordCounts).reduce((a, b) => a + b, 0)
 
   return (
@@ -430,7 +565,7 @@ export default function MyWordbookPage() {
         <div className="flex items-center justify-between gap-4 flex-wrap mb-3">
           <div>
             <h1 className="text-2xl font-black tracking-tight" style={{ color: '#2d1b00' }}>나만의 단어장</h1>
-            <p className="text-sm mt-1" style={{ color: '#8b6e4e' }}>PDF를 업로드하면 AI가 전공 단어를 자동 추출합니다 (최대 2개)</p>
+            <p className="text-sm mt-1" style={{ color: '#8b6e4e' }}>PDF를 업로드하면 AI가 전공 단어를 자동 추출합니다.</p>
           </div>
           <div className="flex gap-3">
             <div className="px-4 py-2 rounded-2xl text-center" style={{ background: '#fff', boxShadow: '0 2px 12px #00000010' }}>
@@ -456,7 +591,7 @@ export default function MyWordbookPage() {
           <>
             <WordbookSidebar
               wordbooks={wordbooks} selectedWb={selectedWb}
-              onSelect={selectWordbook} onDelete={setShowDeleteModal} wordCounts={wordCounts}
+              onSelect={selectWordbook} onDelete={setShowDeleteModal} onTogglePublic={togglePublic} wordCounts={wordCounts}
             />
             {!selectedWb ? (
               <div className="flex-1 flex items-center justify-center">
@@ -471,6 +606,9 @@ export default function MyWordbookPage() {
                 words={words} selectedWord={selectedWord}
                 selectedWb={selectedWb} color={selectedWbColor}
                 onSelectWord={openWord}
+                onAddWord={() => { setEditingWord(null); setShowWordEditModal(true) }}
+                onEditWord={(w) => { setEditingWord(w); setShowWordEditModal(true) }}
+                onDeleteWord={(w) => setShowDeleteWordModal(w)}
               />
             )}
           </>
@@ -493,6 +631,24 @@ export default function MyWordbookPage() {
           description={<>"{showDeleteModal.title}" 단어장과 모든 단어가 삭제됩니다. 계속하시겠습니까?</>}
           onConfirm={() => deleteWordbook(showDeleteModal)}
           onCancel={() => setShowDeleteModal(null)}
+        />
+      )}
+
+      {showDeleteWordModal && (
+        <ConfirmModal
+          title="단어 삭제"
+          description={<>"{showDeleteWordModal.english}" 단어를 삭제하시겠습니까?</>}
+          onConfirm={() => handleDeleteWord(showDeleteWordModal)}
+          onCancel={() => setShowDeleteWordModal(null)}
+        />
+      )}
+
+      {showWordEditModal && selectedWb && (
+        <WordEditModal
+          word={editingWord}
+          wordbookId={selectedWb.id}
+          onClose={() => { setShowWordEditModal(false); setEditingWord(null) }}
+          onComplete={handleWordEditComplete}
         />
       )}
     </div>

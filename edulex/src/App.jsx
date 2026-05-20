@@ -16,6 +16,7 @@ import QuizPage from './pages/QuizPage'
 import DashboardPage from './pages/DashboardPage'
 import AdminWordbookPage from './pages/AdminWordbookPage'
 import CommunityPage from './pages/CommunityPage'
+
 import RankingPage from './pages/RankingPage'
 import SuggestionsPage from './pages/SuggestionsPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
@@ -83,6 +84,7 @@ export default function App() {
                 <UserLayout><CommunityPage /></UserLayout>
               </ProtectedRoute>
             } />
+
             <Route path="/ranking" element={
               <ProtectedRoute>
                 <UserLayout><RankingPage /></UserLayout>
