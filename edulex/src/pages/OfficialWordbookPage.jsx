@@ -1,9 +1,10 @@
-
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Search, GraduationCap, Hash, X } from 'lucide-react'
 import { supabase } from '../utils/supabase'
 import { useMajor } from '../context/MajorContext'
+import { useAuth } from '../context/AuthContext'
 import { BOOK_COLORS } from '../constants/theme'
+import { useStudyTime } from '../hooks/useStudyTime'
 import { LoadingState, EmptyState } from '../components/ui/StateViews'
 
 // ── 사이드바 아이템 ───────────────────────────────────────────────
@@ -269,17 +270,23 @@ function WordModal({ word, idx, total, color, flipDir, pageFlip, onPrev, onNext,
 
           {/* 의미 */}
           <div className="space-y-3">
-            {word.general_meaning && (
-              <div className="rounded-2xl p-4" style={{ background: color.accent + '22', border: `1px solid ${color.accent}` }}>
-                <p className="text-[9px] font-black uppercase tracking-[0.18em] mb-1.5" style={{ color: color.spine + 'aa' }}>일반적 의미</p>
+            <div className="rounded-2xl p-4" style={{ background: color.accent + '22', border: `1px solid ${color.accent}` }}>
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] mb-1.5" style={{ color: color.spine + 'aa' }}>일반적 의미</p>
+              {word.general_meaning ? (
                 <p className="text-sm font-semibold leading-relaxed select-text" style={{ color: '#2d1b00' }}>{word.general_meaning}</p>
-                {word.general_example && (
-                  <p className="text-xs mt-2 italic leading-relaxed pl-3 border-l-2 select-text" style={{ color: '#8b6e4e', borderColor: color.accent }}>
-                    "{word.general_example}"
-                  </p>
-                )}
-              </div>
-            )}
+              ) : (
+                <p className="text-sm font-semibold leading-relaxed" style={{ color: '#b09070' }}>—</p>
+              )}
+              {word.general_example ? (
+                <p className="text-xs mt-2 italic leading-relaxed pl-3 border-l-2 select-text" style={{ color: '#8b6e4e', borderColor: color.accent }}>
+                  "{word.general_example}"
+                </p>
+              ) : (
+                <p className="text-xs mt-2 italic pl-3 border-l-2" style={{ color: '#c4a882', borderColor: color.accent + '60' }}>
+                  예문 데이터 준비 중
+                </p>
+              )}
+            </div>
             <div className="rounded-2xl p-4" style={{ background: color.spine + '08', border: `1px solid ${color.spine}28` }}>
               <p className="text-[9px] font-black uppercase tracking-[0.18em] mb-1.5" style={{ color: color.spine }}>전공 의미</p>
               <p className="text-sm font-bold leading-relaxed select-text" style={{ color: '#2d1b00' }}>{word.major_meaning}</p>
@@ -353,6 +360,9 @@ function ModalNavBtn({ onClick, disabled, color, children }) {
 
 export default function OfficialWordbookPage() {
   const { selectedMajors } = useMajor()
+  const { user } = useAuth()
+  const sessionIdRef = useRef(null)
+  const { startSession, endSession } = useStudyTime(user?.id)
   const [wordbooks, setWordbooks]             = useState([])
   const [selectedWb, setSelectedWb]           = useState(null)
   const [selectedWbColor, setSelectedWbColor] = useState(BOOK_COLORS[0])
@@ -366,6 +376,10 @@ export default function OfficialWordbookPage() {
 
   useEffect(() => { fetchWordbooks() }, [selectedMajors])
 
+  useEffect(() => {
+    return () => { if (sessionIdRef.current) endSession(sessionIdRef.current) }
+  }, [endSession])
+
   const fetchWordbooks = async () => {
     let query = supabase.from('official_wordbooks').select('*').order('created_at', { ascending: false })
     if (selectedMajors.length > 0) query = query.in('major', selectedMajors)
@@ -378,14 +392,19 @@ export default function OfficialWordbookPage() {
   }
 
   const selectWordbook = async (wb, colorIdx) => {
+    if (sessionIdRef.current) await endSession(sessionIdRef.current)
     setSelectedWb(wb)
     setSelectedWbColor(BOOK_COLORS[colorIdx % BOOK_COLORS.length])
     setSelectedWord(null)
     setSelectedIdx(null)
     setModalOpen(false)
     setLoading(true)
-    const { data } = await supabase.from('official_words').select('*').eq('wordbook_id', wb.id)
+    const [{ data }, id] = await Promise.all([
+      supabase.from('official_words').select('*').eq('wordbook_id', wb.id),
+      startSession('wordbook'),
+    ])
     setWords(data ?? [])
+    sessionIdRef.current = id
     setLoading(false)
   }
 

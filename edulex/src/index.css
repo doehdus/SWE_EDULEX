@@ -19,3 +19,69 @@ body {
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
+
+@keyframes fall-in {
+  0%   { transform: translateY(-60vh) rotate(-8deg); opacity: 0; }
+  65%  { transform: translateY(10px)  rotate(2deg);  opacity: 1; }
+  80%  { transform: translateY(-5px)  rotate(-1deg); }
+  90%  { transform: translateY(3px)   rotate(0.5deg); }
+  100% { transform: translateY(0)     rotate(0deg);  opacity: 1; }
+}
+
+@keyframes explode-out {
+  0%   { transform: translate(0, 0)               scale(1)          rotate(0deg);          opacity: 1; }
+  15%  { transform: translate(calc(var(--tx)*0.08), calc(var(--ty)*0.08)) scale(1.4) rotate(calc(var(--tr)*0.15)); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(var(--ts)) rotate(var(--tr));     opacity: 0; }
+}
+
+@keyframes explosion-flash {
+  0%   { transform: scale(0);   opacity: 0.9; }
+  40%  { transform: scale(3);   opacity: 0.7; }
+  100% { transform: scale(5);   opacity: 0; }
+}
+
+@keyframes combo-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+.animate-fall-in       { animation: fall-in       0.5s  cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.animate-explode-out   { animation: explode-out   0.5s  cubic-bezier(0.2, 0, 0.5, 1)       forwards; }
+.animate-explosion-flash { animation: explosion-flash 0.35s ease-out forwards; }
+.animate-combo-pop     { animation: combo-pop     0.25s ease-out              forwards; }
+
+/* ── 칭호 티어 애니메이션 (SBI-T01) ────────────────────────────── */
+
+/* Gold 티어 — 잔잔한 글로우 펄스 */
+@keyframes titleGlow {
+  0%, 100% { box-shadow: 0 0 6px rgba(201,168,76,0.40); }
+  50%      { box-shadow: 0 0 12px rgba(201,168,76,0.75); }
+}
+
+/* Platinum 티어 — 부유 모션 (translateY 미세 진동) */
+@keyframes titleFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+
+/* Platinum 티어 — 파티클 반짝임 (TitlePlate ::before/::after 에 적용) */
+@keyframes titleSparkle {
+  0%, 100% { opacity: 0; transform: scale(0.6); }
+  50%      { opacity: 1; transform: scale(1); }
+}
+
+/* 책갈피 획득 토스트 — 위로 떠오르며 페이드 아웃 */
+@keyframes bookmarkRise {
+  0%   { transform: translate(-50%, 0)     scale(0.9); opacity: 0; }
+  15%  { transform: translate(-50%, -8px)  scale(1.05); opacity: 1; }
+  85%  { transform: translate(-50%, -30px) scale(1);    opacity: 1; }
+  100% { transform: translate(-50%, -52px) scale(0.96); opacity: 0; }
+}
+
+/* 칭호 획득 모달 — 중앙 정렬 유지하면서 scale + opacity 만 변경 */
+@keyframes titleEarnedIn {
+  0%   { transform: scale(0.85); opacity: 0; }
+  60%  { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
