@@ -571,9 +571,7 @@ function ResultView({ answers, total, saving, onRetry, quizResult, activeLevel, 
 // ── 메인 ─────────────────────────────────────────────────────────
 
 export default function QuizPage() {
-  const { user, profile }           = useAuth()
-
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const reward = useReward()
 
   const [step, setStep]             = useState('select')
@@ -589,18 +587,13 @@ export default function QuizPage() {
   const [noWordsModal, setNoWordsModal] = useState(false)
   const [wbLevelCounts, setWbLevelCounts] = useState({})
   const [stackedBooks, setStackedBooks] = useState(0)
-  const [isToppling,  setIsToppling]   = useState(false)
+  const [isToppling, setIsToppling]   = useState(false)
   const [wordCountMode, setWordCountMode] = useState('all')
 
   const achievementWbId = selectedWb?.id ?? null
   const { progress, refetch } = useWordbookAchievement(user?.id, achievementWbId)
   const isReviewMode = progress?.total > 0 && progress?.graduated_count === progress?.total
-
   const hasBookAnim = profile?.owned_items?.includes(QUIZ_BOOK_ANIM_ID) ?? false
-
-  const achievementWbId = selectedWb?.id ?? null
-  const { progress, refetch } = useWordbookAchievement(user?.id, achievementWbId)
-  const isReviewMode = progress?.total > 0 && progress?.graduated_count === progress?.total
 
   useEffect(() => { fetchWordbooks() }, [user])
 
