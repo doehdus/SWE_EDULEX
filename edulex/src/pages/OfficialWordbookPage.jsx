@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Search, GraduationCap, Hash, X } from 'lucide-react'
 import { supabase } from '../utils/supabase'
