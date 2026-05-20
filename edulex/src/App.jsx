@@ -14,10 +14,15 @@ import MyWordbookPage from './pages/MyWordbookPage'
 import QuizPage from './pages/QuizPage'
 import DashboardPage from './pages/DashboardPage'
 import AdminWordbookPage from './pages/AdminWordbookPage'
+SBI-L03]-비밀번호찾기
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
+
 import CommunityPage from './pages/CommunityPage'
 import RankingPage from './pages/RankingPage'
 import SuggestionsPage from './pages/SuggestionsPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
+ develop
 
 function UserLayout({ children }) {
   return (
@@ -42,6 +47,8 @@ export default function App() {
             <Route path="/signup" element={<PublicOnlyRoute><SignupPage /></PublicOnlyRoute>} />
             <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
             <Route path="/admin/login" element={<PublicOnlyRoute><AdminLoginPage /></PublicOnlyRoute>} />
+            <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPasswordPage /></PublicOnlyRoute>} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* 사용자 보호 라우트 */}
             <Route path="/" element={
