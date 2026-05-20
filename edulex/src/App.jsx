@@ -51,7 +51,7 @@ export default function App() {
             <Route path="/admin/login" element={<PublicOnlyRoute><AdminLoginPage /></PublicOnlyRoute>} />
             <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPasswordPage /></PublicOnlyRoute>} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
+            <Route path="/settings/change-password" element={<ProtectedRoute><UserLayout><ChangePasswordPage /></UserLayout></ProtectedRoute>} />
             {/* 사용자 보호 라우트 */}
             <Route path="/" element={
               <ProtectedRoute>

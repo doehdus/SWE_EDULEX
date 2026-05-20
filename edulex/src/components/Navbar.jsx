@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Library, NotebookText, FlaskConical, BarChart2, LogOut, Users, Trophy, MessageSquare } from 'lucide-react'
+import { Library, NotebookText, FlaskConical, BarChart2, LogOut, Users, Trophy, MessageSquare, KeyRound } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { LIB } from '../constants/theme'
 import logo from '../assets/logo.png'
@@ -81,6 +81,14 @@ export default function Navbar() {
                     ))}
                   </div>
                 </div>
+                {/* 비밀번호 변경 */}
+                <button
+                  onClick={() => { setProfileOpen(false); navigate('/settings/change-password') }}
+                  className="w-full text-left px-4 py-3 text-sm font-semibold transition flex items-center gap-2"
+                  style={{ color: LIB.inkMid, borderBottom: `1px solid ${LIB.parchmentDark}` }}
+                >
+                  <KeyRound size={15} strokeWidth={2} /> 비밀번호 변경
+                </button>
                 {/* 로그아웃 */}
                 <button
                   onClick={async () => { setProfileOpen(false); await signOut(); navigate('/login') }}
@@ -173,6 +181,13 @@ export default function Navbar() {
         </nav>
 
         <div className="px-6 py-5" style={{ borderTop: `1px solid ${LIB.parchmentDark}` }}>
+          <button
+            onClick={() => { setSidebarOpen(false); navigate('/settings/change-password') }}
+            className="w-full text-sm transition text-left flex items-center gap-2 font-semibold mb-3"
+            style={{ color: LIB.inkMid }}
+          >
+            <KeyRound size={15} strokeWidth={2} /> 비밀번호 변경
+          </button>
           <button
             onClick={async () => { await signOut(); navigate('/login'); setSidebarOpen(false) }}
             className="w-full text-sm transition text-left flex items-center gap-2 font-semibold"
