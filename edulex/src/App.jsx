@@ -21,6 +21,9 @@ import SuggestionsPage from './pages/SuggestionsPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import ShopPage from './pages/ShopPage'
 import TitleTestPage from './pages/TitleTestPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
 
 function UserLayout({ children }) {
   return (
@@ -46,6 +49,9 @@ export default function App() {
             <Route path="/signup" element={<PublicOnlyRoute><SignupPage /></PublicOnlyRoute>} />
             <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
             <Route path="/admin/login" element={<PublicOnlyRoute><AdminLoginPage /></PublicOnlyRoute>} />
+            <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPasswordPage /></PublicOnlyRoute>} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
             {/* 사용자 보호 라우트 */}
             <Route path="/" element={
               <ProtectedRoute>
