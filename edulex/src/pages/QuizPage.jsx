@@ -409,8 +409,6 @@ function BookStackAnimation({ count, isToppling, total }) {
 
 function QuizView({ question, current, total, chosen, onChoose, activeLevel, hasBookAnim, stackedBooks, isToppling }) {
   return (
-function QuizView({ question, current, total, chosen, onChoose, activeLevel }) {
-  return (
     <div className="min-h-[calc(100vh-72px)] flex items-center justify-center p-6" style={{ background: LIB.parchment }}>
       <div className="w-full max-w-lg">
 
