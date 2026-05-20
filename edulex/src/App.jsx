@@ -14,8 +14,15 @@ import MyWordbookPage from './pages/MyWordbookPage'
 import QuizPage from './pages/QuizPage'
 import DashboardPage from './pages/DashboardPage'
 import AdminWordbookPage from './pages/AdminWordbookPage'
+SBI-L03]-비밀번호찾기
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+
+import CommunityPage from './pages/CommunityPage'
+import RankingPage from './pages/RankingPage'
+import SuggestionsPage from './pages/SuggestionsPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
+ develop
 
 function UserLayout({ children }) {
   return (
@@ -32,6 +39,9 @@ export default function App() {
       <AuthProvider>
         <MajorProvider>
           <Routes>
+            {/* 이메일 인증 콜백 — 가드 없음 */}
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
             {/* 공개 라우트 */}
             <Route path="/landing" element={<PublicOnlyRoute><LandingPage /></PublicOnlyRoute>} />
             <Route path="/signup" element={<PublicOnlyRoute><SignupPage /></PublicOnlyRoute>} />
@@ -64,6 +74,21 @@ export default function App() {
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <UserLayout><DashboardPage /></UserLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/community" element={
+              <ProtectedRoute>
+                <UserLayout><CommunityPage /></UserLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/ranking" element={
+              <ProtectedRoute>
+                <UserLayout><RankingPage /></UserLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/suggestions" element={
+              <ProtectedRoute>
+                <UserLayout><SuggestionsPage /></UserLayout>
               </ProtectedRoute>
             } />
 

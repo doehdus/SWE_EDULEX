@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Trash2, BookOpen, Search, Sparkles, Hash, X } from 'lucide-react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -6,6 +6,7 @@ import PdfUploadBar from '../components/PdfUploadBar'
 import { ConfirmModal } from '../components/ui/Modal'
 import { LoadingState, EmptyState } from '../components/ui/StateViews'
 import { BOOK_COLORS } from '../constants/theme'
+import { useStudyTime } from '../hooks/useStudyTime'
 
 // ── 사이드바 아이템 ───────────────────────────────────────────────
 
@@ -334,6 +335,8 @@ function ModalNavBtn({ onClick, disabled, color, children }) {
 
 export default function MyWordbookPage() {
   const { user } = useAuth()
+  const sessionIdRef = useRef(null)
+  const { startSession, endSession } = useStudyTime(user?.id)
   const [wordbooks, setWordbooks]             = useState([])
   const [selectedWb, setSelectedWb]           = useState(null)
   const [selectedWbColor, setSelectedWbColor] = useState(BOOK_COLORS[0])
@@ -348,6 +351,10 @@ export default function MyWordbookPage() {
   const [wordCounts, setWordCounts]           = useState({})
 
   useEffect(() => { fetchWordbooks() }, [user])
+
+  useEffect(() => {
+    return () => { if (sessionIdRef.current) endSession(sessionIdRef.current) }
+  }, [endSession])
 
   const fetchWordbooks = async () => {
     const { data } = await supabase
@@ -366,14 +373,19 @@ export default function MyWordbookPage() {
   }
 
   const selectWordbook = async (wb, colorIdx) => {
+    if (sessionIdRef.current) await endSession(sessionIdRef.current)
     setSelectedWb(wb)
     setSelectedWbColor(BOOK_COLORS[colorIdx % BOOK_COLORS.length])
     setSelectedWord(null)
     setSelectedIdx(null)
     setModalOpen(false)
     setLoading(true)
-    const { data } = await supabase.from('user_words').select('*').eq('wordbook_id', wb.id)
+    const [{ data }, id] = await Promise.all([
+      supabase.from('user_words').select('*').eq('wordbook_id', wb.id),
+      startSession('wordbook'),
+    ])
     setWords(data ?? [])
+    sessionIdRef.current = id
     setLoading(false)
   }
 
