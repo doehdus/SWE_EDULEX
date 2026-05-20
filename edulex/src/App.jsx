@@ -16,6 +16,7 @@ import QuizPage from './pages/QuizPage'
 import DashboardPage from './pages/DashboardPage'
 import AdminWordbookPage from './pages/AdminWordbookPage'
 import CommunityPage from './pages/CommunityPage'
+import PostsPage from './pages/PostsPage'
 
 import RankingPage from './pages/RankingPage'
 import SuggestionsPage from './pages/SuggestionsPage'
@@ -82,6 +83,11 @@ export default function App() {
             <Route path="/community" element={
               <ProtectedRoute>
                 <UserLayout><CommunityPage /></UserLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/posts" element={
+              <ProtectedRoute>
+                <UserLayout><PostsPage /></UserLayout>
               </ProtectedRoute>
             } />
 

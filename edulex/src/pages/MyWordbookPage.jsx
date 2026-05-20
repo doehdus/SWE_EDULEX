@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Trash2, BookOpen, Search, Sparkles, Hash, X, Plus, Edit2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Trash2, BookOpen, Search, Sparkles, Hash, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, BookOpen, Search, Sparkles, Hash, X, Plus, Edit2 } from 'lucide-react'
 import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
 import PdfUploadBar from '../components/PdfUploadBar'
@@ -496,16 +494,12 @@ export default function MyWordbookPage() {
 
   const loadWords = async (wbId) => {
     setLoading(true)
-    const { data } = await supabase.from('user_words').select('*').eq('wordbook_id', wbId).order('created_at', { ascending: true })
-    setWords(data ?? [])
-    
-    // Update word count
-    setWordCounts(prev => ({ ...prev, [wbId]: (data ?? []).length }))
     const [{ data }, id] = await Promise.all([
-      supabase.from('user_words').select('*').eq('wordbook_id', wb.id),
+      supabase.from('user_words').select('*').eq('wordbook_id', wbId).order('created_at', { ascending: true }),
       startSession('wordbook'),
     ])
     setWords(data ?? [])
+    setWordCounts(prev => ({ ...prev, [wbId]: (data ?? []).length }))
     sessionIdRef.current = id
     setLoading(false)
   }
