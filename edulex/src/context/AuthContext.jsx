@@ -36,8 +36,17 @@ export function AuthProvider({ children }) {
 
   const signOut = () => supabase.auth.signOut()
 
+  const updateIconIndex = async (index) => {
+    const { error } = await supabase
+      .from('users')
+      .update({ icon_index: index })
+      .eq('id', user.id)
+    if (!error) setProfile(prev => ({ ...prev, icon_index: index }))
+    return { error }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut, fetchProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, signOut, fetchProfile, updateIconIndex }}>
       {children}
     </AuthContext.Provider>
   )

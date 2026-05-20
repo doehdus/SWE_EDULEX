@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { MajorProvider } from './context/MajorContext'
+import { RewardProvider } from './context/RewardContext'
 import { ProtectedRoute, AdminRoute, PublicOnlyRoute } from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
 
@@ -14,6 +15,15 @@ import MyWordbookPage from './pages/MyWordbookPage'
 import QuizPage from './pages/QuizPage'
 import DashboardPage from './pages/DashboardPage'
 import AdminWordbookPage from './pages/AdminWordbookPage'
+import CommunityPage from './pages/CommunityPage'
+import RankingPage from './pages/RankingPage'
+import SuggestionsPage from './pages/SuggestionsPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
+import ShopPage from './pages/ShopPage'
+import TitleTestPage from './pages/TitleTestPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
 
 function UserLayout({ children }) {
   return (
@@ -29,13 +39,19 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <MajorProvider>
+         <RewardProvider>
           <Routes>
+            {/* 이메일 인증 콜백 — 가드 없음 */}
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
             {/* 공개 라우트 */}
             <Route path="/landing" element={<PublicOnlyRoute><LandingPage /></PublicOnlyRoute>} />
             <Route path="/signup" element={<PublicOnlyRoute><SignupPage /></PublicOnlyRoute>} />
             <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
             <Route path="/admin/login" element={<PublicOnlyRoute><AdminLoginPage /></PublicOnlyRoute>} />
-
+            <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPasswordPage /></PublicOnlyRoute>} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/settings/change-password" element={<ProtectedRoute><UserLayout><ChangePasswordPage /></UserLayout></ProtectedRoute>} />
             {/* 사용자 보호 라우트 */}
             <Route path="/" element={
               <ProtectedRoute>
@@ -62,6 +78,31 @@ export default function App() {
                 <UserLayout><DashboardPage /></UserLayout>
               </ProtectedRoute>
             } />
+            <Route path="/community" element={
+              <ProtectedRoute>
+                <UserLayout><CommunityPage /></UserLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/ranking" element={
+              <ProtectedRoute>
+                <UserLayout><RankingPage /></UserLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/suggestions" element={
+              <ProtectedRoute>
+                <UserLayout><SuggestionsPage /></UserLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/shop" element={
+              <ProtectedRoute>
+                <UserLayout><ShopPage /></UserLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/title-test" element={
+              <ProtectedRoute>
+                <UserLayout><TitleTestPage /></UserLayout>
+              </ProtectedRoute>
+            } />
 
             {/* 관리자 보호 라우트 */}
             <Route path="/admin" element={
@@ -70,6 +111,7 @@ export default function App() {
               </AdminRoute>
             } />
           </Routes>
+         </RewardProvider>
         </MajorProvider>
       </AuthProvider>
     </BrowserRouter>

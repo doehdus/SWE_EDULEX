@@ -1,39 +1,33 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Library, NotebookText, FlaskConical, BarChart2, LogOut } from 'lucide-react'
+import { Library, NotebookText, FlaskConical, BarChart2, LogOut, Users, Trophy, MessageSquare, KeyRound } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { LIB } from '../constants/theme'
 import logo from '../assets/logo.png'
-import icon1 from '../assets/icon1.png'
-import icon2 from '../assets/icon2.png'
-import icon3 from '../assets/icon3.png'
-import icon4 from '../assets/icon4.png'
-import icon5 from '../assets/icon5.png'
-import icon6 from '../assets/icon6.png'
-import icon7 from '../assets/icon7.png'
-import icon8 from '../assets/icon8.png'
-import icon9 from '../assets/icon9.png'
-import icon10 from '../assets/icon10.png'
-import icon11 from '../assets/icon11.png'
-import icon12 from '../assets/icon12.png'
-
-const ICONS = [icon1, icon2, icon3, icon4, icon5, icon6, icon7, icon8, icon9, icon10, icon11, icon12]
+import { ICONS } from '../constants/icons'
 
 const MENU_ITEMS = [
   { path: '/wordbook/official', label: '공식 단어장', icon: <Library size={18} strokeWidth={1.8} /> },
   { path: '/wordbook/my',       label: '나만의 단어장', icon: <NotebookText size={18} strokeWidth={1.8} /> },
   { path: '/quiz',              label: '테스트',       icon: <FlaskConical size={18} strokeWidth={1.8} /> },
   { path: '/dashboard',        label: '학습 현황',    icon: <BarChart2 size={18} strokeWidth={1.8} /> },
+  { path: '/community',        label: '커뮤니티',     icon: <Users size={18} strokeWidth={1.8} /> },
+  { path: '/ranking',          label: '랭킹',         icon: <Trophy size={18} strokeWidth={1.8} /> },
+  { path: '/suggestions',      label: '건의사항',     icon: <MessageSquare size={18} strokeWidth={1.8} /> },
 ]
 
 export default function Navbar() {
   const { pathname } = useLocation()
-  const { signOut } = useAuth()
+  const { signOut, profile, updateIconIndex } = useAuth()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const [selectedIcon, setSelectedIcon] = useState(icon1)
+  const [selectedIcon, setSelectedIcon] = useState(ICONS[0])
   const profileRef = useRef(null)
+
+  useEffect(() => {
+    if (profile?.icon_index) setSelectedIcon(ICONS[profile.icon_index - 1])
+  }, [profile])
 
   useEffect(() => {
     function handleClick(e) {
@@ -42,6 +36,12 @@ export default function Navbar() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  async function handleSelectIcon(ic, index) {
+    setSelectedIcon(ic)
+    setProfileOpen(false)
+    await updateIconIndex(index + 1)
+  }
 
   return (
     <>
@@ -72,7 +72,7 @@ export default function Navbar() {
                     {ICONS.map((ic, i) => (
                       <button
                         key={i}
-                        onClick={() => { setSelectedIcon(ic); setProfileOpen(false) }}
+                        onClick={() => handleSelectIcon(ic, i)}
                         className="w-10 h-10 rounded-full overflow-hidden border-2 transition hover:scale-110"
                         style={{ borderColor: selectedIcon === ic ? LIB.gold : 'transparent' }}
                       >
@@ -81,6 +81,14 @@ export default function Navbar() {
                     ))}
                   </div>
                 </div>
+                {/* 비밀번호 변경 */}
+                <button
+                  onClick={() => { setProfileOpen(false); navigate('/settings/change-password') }}
+                  className="w-full text-left px-4 py-3 text-sm font-semibold transition flex items-center gap-2"
+                  style={{ color: LIB.inkMid, borderBottom: `1px solid ${LIB.parchmentDark}` }}
+                >
+                  <KeyRound size={15} strokeWidth={2} /> 비밀번호 변경
+                </button>
                 {/* 로그아웃 */}
                 <button
                   onClick={async () => { setProfileOpen(false); await signOut(); navigate('/login') }}
@@ -173,6 +181,13 @@ export default function Navbar() {
         </nav>
 
         <div className="px-6 py-5" style={{ borderTop: `1px solid ${LIB.parchmentDark}` }}>
+          <button
+            onClick={() => { setSidebarOpen(false); navigate('/settings/change-password') }}
+            className="w-full text-sm transition text-left flex items-center gap-2 font-semibold mb-3"
+            style={{ color: LIB.inkMid }}
+          >
+            <KeyRound size={15} strokeWidth={2} /> 비밀번호 변경
+          </button>
           <button
             onClick={async () => { await signOut(); navigate('/login'); setSidebarOpen(false) }}
             className="w-full text-sm transition text-left flex items-center gap-2 font-semibold"
