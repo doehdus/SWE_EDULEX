@@ -23,11 +23,30 @@ function shuffle(arr) {
   return a
 }
 
-function buildQuestions(pool, source) {
+function buildQuestions(pool, source, level = 1) {
   return shuffle(pool).map(word => {
-    const wrongs  = shuffle(source.filter(w => w.id !== word.id)).slice(0, 3).map(w => w.english)
-    const choices = shuffle([word.english, ...wrongs])
-    return { id: word.id, question: word.major_meaning, answer: word.english, choices }
+    let question, answer, choices = []
+    if (level === 1) {
+      question = word.major_meaning
+      answer   = word.english
+      const wrongs = shuffle(source.filter(w => w.id !== word.id)).slice(0, 3).map(w => w.english)
+      choices = shuffle([answer, ...wrongs])
+    } else if (level === 2) {
+      question = word.english
+      answer   = word.major_meaning
+      const wrongs = shuffle(source.filter(w => w.id !== word.id)).slice(0, 3).map(w => w.major_meaning)
+      choices = shuffle([answer, ...wrongs])
+    } else if (level === 3) {
+      question = word.major_meaning
+      answer   = word.english
+    } else if (level === 4) {
+      const example = word.major_example || ''
+      const regex   = new RegExp(word.english, 'gi')
+      question = example.replace(regex, '_________')
+      if (question === example) question = `(예문 없음) 뜻: ${word.major_meaning}`
+      answer = word.english
+    }
+    return { id: word.id, question, answer, choices }
   })
 }
 
@@ -402,6 +421,29 @@ function BookStackAnimation({ count, isToppling, total }) {
 // ── 퀴즈 화면 ─────────────────────────────────────────────────────
 
 function QuizView({ question, current, total, chosen, onChoose, activeLevel, hasBookAnim, stackedBooks, isToppling }) {
+  const [inputValue, setInputValue] = useState('')
+  const isSubjective = activeLevel >= 3
+
+  useEffect(() => { setInputValue('') }, [current])
+
+  const handleInputSubmit = (e) => {
+    e.preventDefault()
+    if (chosen !== null || !inputValue.trim()) return
+    onChoose(inputValue.trim())
+  }
+
+  const titleText = activeLevel === 2 ? '이 단어의 알맞은 뜻은?'
+    : activeLevel === 3 ? '이 뜻에 해당하는 영어 단어를 입력하세요'
+    : activeLevel === 4 ? '빈칸에 들어갈 알맞은 영어 단어는?'
+    : '이 뜻에 해당하는 영어 단어는?'
+
+  let inputBg = 'white', inputBorder = LIB.shelfLine, inputColor = LIB.ink
+  if (chosen !== null && isSubjective) {
+    const isCorrect = chosen.trim().toLowerCase() === question.answer.toLowerCase()
+    if (isCorrect) { inputBg = '#f0fdf4'; inputBorder = '#4ade80'; inputColor = '#166534' }
+    else           { inputBg = '#fff1f2'; inputBorder = '#f87171'; inputColor = '#991b1b' }
+  }
+
   return (
     <div className="min-h-[calc(100vh-72px)] flex items-center justify-center p-6" style={{ background: LIB.parchment }}>
       <div className="w-full max-w-lg">
@@ -424,7 +466,7 @@ function QuizView({ question, current, total, chosen, onChoose, activeLevel, has
           <div className="absolute top-0 bottom-0 left-1/2 -translate-x-px w-px opacity-15" style={{ background: LIB.shelfLine }} />
           <div className="absolute top-0 right-8 w-3 h-8 rounded-b-sm opacity-60" style={{ background: LIB.deepRed }} />
           <p className="text-xs font-semibold mb-3 uppercase tracking-widest" style={{ color: LIB.inkLight }}>
-            이 뜻에 해당하는 영어 단어는?
+            {titleText}
           </p>
           <p className="text-2xl font-black leading-snug" style={{ color: LIB.ink }}>{question.question}</p>
         </div>
@@ -433,37 +475,65 @@ function QuizView({ question, current, total, chosen, onChoose, activeLevel, has
           <BookStackAnimation count={stackedBooks} isToppling={isToppling} total={total} />
         )}
 
-        <div className="space-y-3">
-          {question.choices.map((choice, i) => {
-            let bg = 'white', borderColor = LIB.shelfLine, textColor = LIB.ink
-            let labelBg = LIB.parchmentDark, labelColor = LIB.inkMid
+        {isSubjective ? (
+          <form onSubmit={handleInputSubmit} className="flex flex-col gap-3">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              disabled={chosen !== null}
+              placeholder="정답을 입력하세요"
+              autoFocus
+              className="w-full px-5 py-4 rounded-xl border-2 text-center text-lg font-bold outline-none transition-all"
+              style={{ borderColor: inputBorder, background: inputBg, color: inputColor }}
+            />
+            <button
+              type="submit"
+              disabled={chosen !== null || !inputValue.trim()}
+              className="w-full py-4 rounded-xl text-sm font-black tracking-wide transition-all disabled:opacity-50"
+              style={{ background: LIB.gold, color: LIB.ink }}
+            >
+              제출하기
+            </button>
+            {chosen !== null && chosen.trim().toLowerCase() !== question.answer.toLowerCase() && (
+              <div className="mt-2 text-center font-bold text-sm" style={{ color: '#991b1b' }}>
+                정답: {question.answer}
+              </div>
+            )}
+          </form>
+        ) : (
+          <div className="space-y-3">
+            {question.choices.map((choice, i) => {
+              let bg = 'white', borderColor = LIB.shelfLine, textColor = LIB.ink
+              let labelBg = LIB.parchmentDark, labelColor = LIB.inkMid
 
-            if (chosen !== null) {
-              if (choice === question.answer) {
-                bg = '#f0fdf4'; borderColor = '#4ade80'; textColor = '#166534'
-                labelBg = '#4ade80'; labelColor = 'white'
-              } else if (choice === chosen) {
-                bg = '#fff1f2'; borderColor = '#f87171'; textColor = '#991b1b'
-                labelBg = '#f87171'; labelColor = 'white'
-              } else {
-                borderColor = LIB.parchmentDark; textColor = LIB.shelfLine
-                labelBg = LIB.parchmentDark; labelColor = LIB.shelfLine
+              if (chosen !== null) {
+                if (choice === question.answer) {
+                  bg = '#f0fdf4'; borderColor = '#4ade80'; textColor = '#166534'
+                  labelBg = '#4ade80'; labelColor = 'white'
+                } else if (choice === chosen) {
+                  bg = '#fff1f2'; borderColor = '#f87171'; textColor = '#991b1b'
+                  labelBg = '#f87171'; labelColor = 'white'
+                } else {
+                  borderColor = LIB.parchmentDark; textColor = LIB.shelfLine
+                  labelBg = LIB.parchmentDark; labelColor = LIB.shelfLine
+                }
               }
-            }
 
-            return (
-              <button key={i} onClick={() => onChoose(choice)}
-                className="w-full flex items-center gap-4 px-5 py-4 rounded-xl border-2 text-sm font-semibold text-left transition-all duration-150 hover:scale-[1.01]"
-                style={{ background: bg, borderColor, color: textColor }}
-              >
-                <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0" style={{ background: labelBg, color: labelColor }}>
-                  {CHOICE_LABELS[i]}
-                </span>
-                {choice}
-              </button>
-            )
-          })}
-        </div>
+              return (
+                <button key={i} onClick={() => onChoose(choice)}
+                  className="w-full flex items-center gap-4 px-5 py-4 rounded-xl border-2 text-sm font-semibold text-left transition-all duration-150 hover:scale-[1.01]"
+                  style={{ background: bg, borderColor, color: textColor }}
+                >
+                  <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0" style={{ background: labelBg, color: labelColor }}>
+                    {CHOICE_LABELS[i]}
+                  </span>
+                  {choice}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -670,7 +740,7 @@ export default function QuizPage() {
       })
       allWords = data
     } else {
-      let q = supabase.from('user_words').select('id, english, major_meaning').eq('wordbook_id', selectedWb.id)
+      let q = supabase.from('user_words').select('id, english, major_meaning, major_example').eq('wordbook_id', selectedWb.id)
       if (!isReviewMode) q = q.eq('word_level', activeLevel)
       const { data } = await q
       allWords = data
@@ -689,7 +759,7 @@ export default function QuizPage() {
       : allWords
 
     setQuizResult(null)
-    setQuestions(buildQuestions(pool, allWords))
+    setQuestions(buildQuestions(pool, allWords, activeLevel))
     setAnswers([])
     setCurrent(0)
     setChosen(null)
@@ -701,7 +771,7 @@ export default function QuizPage() {
   const handleChoose = (choice) => {
     if (chosen !== null) return
     setChosen(choice)
-    const isCorrect   = choice === questions[current].answer
+    const isCorrect   = choice.trim().toLowerCase() === questions[current].answer.toLowerCase()
     const nextAnswers = [...answers, { chosen: choice, correct: isCorrect }]
 
     if (hasBookAnim) {
